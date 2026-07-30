@@ -103,9 +103,15 @@
     '.k-hd-r{text-align:right;font-size:11px;opacity:.85;}',
     '.k-hd-r b{display:block;font-size:13px;opacity:1;font-weight:650;}',
 
-    /* filter bar */
-    '.k-fb{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:9px 12px;',
+    /* filter bar. Two EXPLICIT rows rather than flex-wrap: at 1280 the content
+       always wrapped, and with margin-left:auto on Reset that pushed the button
+       to the end of whichever row it landed on, which read as a bug. */
+    '.k-fb{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;',
     'background:var(--k-sf);border:1px solid var(--k-ln);border-radius:10px;box-shadow:var(--k-sh);}',
+    /* Summary + Reset travel together in one trailing group. Previously Reset
+       carried margin-left:auto on its own, so when the bar wrapped it landed at
+       the end of whichever row it happened to fall on, which read as a bug. */
+    '.k-fend{display:flex;align-items:center;gap:9px;margin-left:auto;}',
     '.k-lab{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;',
     'color:var(--k-fnt);margin-right:1px;}',
     '.k-sep{width:1px;height:18px;background:var(--k-ln);margin:0 4px;}',
@@ -141,8 +147,13 @@
     /* grid */
     '.k-grid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px;}',
     '.k-col{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0;}',
+    /* Cards FILL their column. Without this they size to content and leave a
+       dead band at the bottom of the page, which is exactly what happened at
+       the real 1280x1200 visual size. */
     '.k-card{background:var(--k-sf);border:1px solid var(--k-ln);border-radius:10px;',
-    'box-shadow:var(--k-sh);display:flex;flex-direction:column;min-height:0;overflow:hidden;}',
+    'box-shadow:var(--k-sh);display:flex;flex-direction:column;min-height:0;overflow:hidden;',
+    'flex:1 1 auto;}',
+    '.k-card.is-fixed{flex:0 0 auto;}',
     '.k-card-hd{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:9px 13px;',
     'border-bottom:1px solid var(--k-ln);}',
     '.k-card-t{font-size:12.5px;font-weight:650;}',
@@ -431,6 +442,7 @@
     var grid = el('div', 'k-grid');
     var left = el('div', 'k-col'), right = el('div', 'k-col');
     left.appendChild(buildStatement(agg, fmt));
+    left.appendChild(buildTrend(fmt));
     right.appendChild(buildPareto(agg, fmt));
     right.appendChild(buildStores(agg, fmt));
     grid.appendChild(left); grid.appendChild(right);
@@ -458,20 +470,19 @@
 
   function buildFilterBar(mask) {
     var bar = el('div', 'k-fb');
+    var r1 = bar, r2 = bar, i;   // one wrapping row; the browser breaks it if it must
 
-    bar.appendChild(el('span', 'k-lab', 'Period'));
-    bar.appendChild(monthSelect('k-m0', mask.m0));
-    bar.appendChild(el('span', 'k-lab', 'to'));
-    bar.appendChild(monthSelect('k-m1', mask.m1));
-
-    bar.appendChild(el('span', 'k-sep'));
-    bar.appendChild(el('span', 'k-lab', 'Region'));
-    for (var i = 0; i < D.regions.length; i++) {
-      bar.appendChild(chip(D.regions[i], 'region', D.regions[i], !!S.regions[D.regions[i]]));
+    r1.appendChild(el('span', 'k-lab', 'Period'));
+    r1.appendChild(monthSelect('k-m0', mask.m0));
+    r1.appendChild(el('span', 'k-lab', 'to'));
+    r1.appendChild(monthSelect('k-m1', mask.m1));
+    r1.appendChild(el('span', 'k-sep'));
+    r1.appendChild(el('span', 'k-lab', 'Region'));
+    for (i = 0; i < D.regions.length; i++) {
+      r1.appendChild(chip(D.regions[i], 'region', D.regions[i], !!S.regions[D.regions[i]]));
     }
-
-    bar.appendChild(el('span', 'k-sep'));
-    bar.appendChild(el('span', 'k-lab', 'Store'));
+    r1.appendChild(el('span', 'k-sep'));
+    r1.appendChild(el('span', 'k-lab', 'Store'));
     var sel = el('select', 'k-sel');
     sel.id = 'k-store';
     sel.setAttribute('aria-label', 'Store');
@@ -483,28 +494,40 @@
         esc(D.stores[i][2]) + '</option>';
     }
     sel.innerHTML = opts;
-    bar.appendChild(sel);
+    r1.appendChild(sel);
 
-    bar.appendChild(el('span', 'k-sep'));
-    bar.appendChild(el('span', 'k-lab', 'Category'));
+    r1.appendChild(el('span', 'k-sep'));
+    r2.appendChild(el('span', 'k-lab', 'Category'));
     for (i = 0; i < D.cats.length; i++) {
-      bar.appendChild(chip(D.cats[i], 'cat', D.cats[i], !!S.cats[D.cats[i]]));
+      r2.appendChild(chip(D.cats[i], 'cat', D.cats[i], !!S.cats[D.cats[i]]));
     }
-
     if (S.product != null) {
+      r2.appendChild(el('span', 'k-sep'));
       var p = D.products[S.product];
       var pill = el('span', 'k-pill');
-      pill.innerHTML = esc(clip(p[2], 26)) + '<button type="button" data-k="clear-product" ' +
+      pill.innerHTML = esc(clip(p[2], 30)) + '<button type="button" data-k="clear-product" ' +
         'aria-label="Clear product selection">' + String.fromCharCode(0xD7) + '</button>';
-      bar.appendChild(pill);
+      r2.appendChild(pill);
     }
-
+    var end = el('div', 'k-fend');
+    end.appendChild(el('span', 'k-lab', summarise(mask)));
     var reset = el('button', 'k-reset', 'Reset all');
     reset.type = 'button';
     reset.setAttribute('data-k', 'reset');
     if (!isFiltered()) reset.setAttribute('disabled', 'disabled');
-    bar.appendChild(reset);
+    end.appendChild(reset);
+    bar.appendChild(end);
     return bar;
+  }
+
+  function summarise(mask) {
+    var n = mask.m1 - mask.m0 + 1;
+    var st = 0;
+    for (var i = 0; i < D.nS; i++) if (mask.s[i]) st++;
+    var pr = 0;
+    for (i = 0; i < D.nP; i++) if (mask.p[i]) pr++;
+    return n + ' month' + (n === 1 ? '' : 's') + ' ' + DOT + ' ' +
+      st + ' of ' + D.nS + ' stores ' + DOT + ' ' + pr + ' of ' + D.nP + ' products';
   }
 
   function isFiltered() {
@@ -652,6 +675,76 @@
       '</div></td></tr>';
   }
 
+  /* ---- revenue vs budget by month ---------------------------------------- */
+  /* Deliberately shows EVERY month, not just the selected window, with the
+     window shaded. The point of a trend is the context around the selection. */
+  function buildTrend(fmt) {
+    var card = el('div', 'k-card is-fixed');
+    card.style.flexBasis = '150px';
+    var revLine = null, i;
+    for (i = 0; i < D.nL; i++) if (D.lines[i][1] === 'Total Revenue') revLine = i;
+    if (revLine == null) revLine = 0;
+
+    var accts = D.lineAccts[revLine], isA = new Uint8Array(D.nA);
+    for (i = 0; i < accts.length; i++) isA[accts[i]] = 1;
+    var a = D.pnl, act = new Float64Array(D.nM), bud = new Float64Array(D.nM);
+    for (i = 0; i < a.length; i += 5) {
+      if (!isA[a[i]] || !V.mask.s[a[i + 1]]) continue;
+      act[a[i + 2]] += a[i + 3]; bud[a[i + 2]] += a[i + 4];
+    }
+
+    var hd = el('div', 'k-card-hd');
+    hd.innerHTML = '<span class="k-card-t">Revenue vs Budget by month</span>' +
+      '<span class="k-card-sp"></span>' +
+      '<span class="k-card-n"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;' +
+      'background:var(--k-ac);margin-right:4px"></span>Actual' +
+      '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;' +
+      'background:var(--k-fnt);margin:0 4px 0 10px"></span>Budget</span>';
+    card.appendChild(hd);
+
+    var W = 900, H = 108, padL = 12, padR = 10, padT = 8, padB = 12;
+    var pw = W - padL - padR, ph = H - padT - padB;
+    var mx = 0;
+    for (i = 0; i < D.nM; i++) mx = Math.max(mx, act[i], bud[i]);
+    mx = niceCeil(mx / 100) * 100;
+    if (mx <= 0) mx = 1;
+    var step = D.nM > 1 ? pw / (D.nM - 1) : 0;
+    function y(v) { return padT + ph - (v / mx) * ph; }
+
+    var ap = [], bp = [];
+    for (i = 0; i < D.nM; i++) {
+      ap.push((padL + i * step).toFixed(1) + ',' + y(act[i]).toFixed(1));
+      bp.push((padL + i * step).toFixed(1) + ',' + y(bud[i]).toFixed(1));
+    }
+    var o = ['<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:100%">'];
+    o.push('<rect x="' + (padL + V.mask.m0 * step).toFixed(1) + '" y="' + padT + '" width="' +
+      Math.max(2, (V.mask.m1 - V.mask.m0) * step).toFixed(1) + '" height="' + ph + '" fill="var(--k-ac2)"/>');
+    for (var g = 0; g <= 2; g++) {
+      var gy = padT + ph - (g / 2) * ph;
+      o.push('<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) +
+        '" stroke="var(--k-grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>');
+    }
+    o.push('<polyline points="' + bp.join(' ') + '" fill="none" stroke="var(--k-fnt)" stroke-width="1.4" ' +
+      'stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>');
+    o.push('<polyline points="' + ap.join(' ') + '" fill="none" stroke="var(--k-ac)" stroke-width="2" ' +
+      'vector-effect="non-scaling-stroke"/>');
+    o.push('</svg>');
+
+    var bd = el('div');
+    bd.style.cssText = 'flex:1 1 auto;min-height:0;position:relative;padding:4px 10px 2px;';
+    bd.innerHTML = o.join('');
+    card.appendChild(bd);
+
+    var ax = el('div');
+    ax.style.cssText = 'flex:0 0 auto;display:flex;justify-content:space-between;' +
+      'padding:0 12px 7px;font-size:10px;color:var(--k-fnt);';
+    ax.innerHTML = '<span>' + esc(D.months[0][1]) + '</span>' +
+      '<span style="color:var(--k-ac);font-weight:700">' + esc(fmt.cmp(mx / 100)) + ' peak scale</span>' +
+      '<span>' + esc(D.months[D.nM - 1][1]) + '</span>';
+    card.appendChild(ax);
+    return card;
+  }
+
   /* ---- Pareto ------------------------------------------------------------- */
   var MEAS = [{ k: 'revenue', l: 'Revenue', m: true }, { k: 'units', l: 'Units', m: false }, { k: 'margin', l: 'Margin', m: true }];
   var TOPN = [{ v: 20, l: 'Top 20' }, { v: 50, l: 'Top 50' }, { v: 0, l: 'All' }];
@@ -781,9 +874,8 @@
 
   /* ---- store table -------------------------------------------------------- */
   function buildStores(agg, fmt) {
+    /* No fixed height: it shares the column with the Pareto and both fill. */
     var card = el('div', 'k-card');
-    card.style.flex = '0 0 auto';
-    card.style.maxHeight = '38%';
     var hd = el('div', 'k-card-hd');
     hd.innerHTML = '<span class="k-card-t">' + (S.product != null ? 'Selected product by store' : 'Store performance') +
       '</span><span class="k-card-sp"></span><span class="k-card-n">click a row to filter</span>';
