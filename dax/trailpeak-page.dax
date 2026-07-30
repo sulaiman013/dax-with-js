@@ -1,0 +1,227 @@
+// ============================================================================
+// JS Report Page  -  the ENTIRE page as one measure, one visual
+// ----------------------------------------------------------------------------
+// This replaces a whole report page: KPI cards, slicers, the P&L statement, the
+// Pareto chart and the store table. All of it renders from this single measure
+// into a single HTML Content visual.
+//
+// WHY
+//   A custom visual cannot cross-filter its neighbours unless its own compiled
+//   TypeScript builds selection identities and calls selectionManager.select().
+//   HTML Content never does. So instead of fighting that, the page stops being
+//   several visuals. When the page IS the visual, there is nothing to
+//   cross-filter to: every click re-aggregates in the browser, instantly.
+//
+// WHAT IT SHIPS
+//   Not aggregates. FACTS, at grain, so the browser can re-aggregate under any
+//   selection the user makes:
+//
+//     dims     accounts, stores, products, months, statement lines
+//     bridge   line -> account pairs, many-to-many, carrying every rollup
+//     pnl      account x store x month, actual and budget     ~7,200 rows
+//     sales    product x store x month, revenue/units/cost    ~40,200 rows
+//
+//   About 1.37M characters, roughly 65% of the ~2.1M measure ceiling. That
+//   ceiling is the real design constraint here, which is why keys are emitted
+//   as bare integers and facts as flat arrays rather than objects. Emitting
+//   arrays of objects instead would roughly triple it and blow the budget.
+//
+// FILTER CONTEXT
+//   Report and page level filters STILL apply, because this measure is
+//   evaluated in filter context like any other. What the page brings is its own
+//   IN-VISUAL controls, which then slice the shipped facts client side.
+//
+// WHY BARE INTEGER KEYS AND NOT DENSE INDEXES
+//   A 0..n-1 index would be smaller, but producing one in DAX means a RANKX or
+//   LOOKUPVALUE per fact row, and there are 40,000 of them. The browser builds
+//   the maps instead, in one linear pass.
+//
+// LOCALE SAFETY
+//   Every number goes through FORMAT(x, "0"), which emits no decimal or
+//   thousand separator in any locale. Money is integer minor units (cents).
+//   Without this, a de-DE or fr-FR workspace turns 1234.56 into "1234,56" and
+//   silently corrupts the payload into unparseable JavaScript.
+//
+// TARGET VISUAL
+//   HTML Content, the STANDARD (uncertified) edition,
+//   visualType htmlContent443BE3AD55E043BF878BED274D3A6855.
+//   The lite/certified edition (...6865) sanitizes the markup and strips script
+//   tags, so it renders blank with no error. It cannot work, by design.
+// ============================================================================
+
+JS Report Page =
+VAR CdnUrl =
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-page-v1.0.0/trailpeak/trailpeak-page.js"
+
+VAR BS = UNICHAR ( 92 )
+VAR DOT = UNICHAR ( 183 )
+
+// Text -> safe single-quoted JS literal. Order matters: the backslash must be
+// escaped before the quote, or the backslash added in step 2 gets doubled.
+// The final step stops any value from closing the script tag early.
+VAR Q = "'"
+
+// -- closed months only ------------------------------------------------------
+VAR _lastClosed = COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+VAR _monthKeys =
+    CALCULATETABLE (
+        VALUES ( dim_date[YearMonthKey] ),
+        dim_date[Date] <= _lastClosed
+    )
+
+// ===========================================================================
+// DIMENSIONS
+// ===========================================================================
+VAR _dimAcct =
+    CONCATENATEX (
+        VALUES ( dim_account[AccountKey] ),
+        "[" & FORMAT ( dim_account[AccountKey], "0" )
+            & ",'" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_account[Account] ) ),
+                BS, BS & BS ), Q, BS & Q ), "<", BS & "u003C" )
+            & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_account[Category] ) ),
+                BS, BS & BS ), Q, BS & Q ), "<", BS & "u003C" )
+            & "']",
+        ",", dim_account[AccountKey], ASC
+    )
+
+VAR _dimStore =
+    CONCATENATEX (
+        VALUES ( dim_store[StoreKey] ),
+        "[" & FORMAT ( dim_store[StoreKey], "0" )
+            & ",'" & CALCULATE ( SELECTEDVALUE ( dim_store[StoreCode] ) )
+            & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_store[StoreName] ) ),
+                BS, BS & BS ), Q, BS & Q ), "<", BS & "u003C" )
+            & "','" & CALCULATE ( SELECTEDVALUE ( dim_store[Region] ) )
+            & "','" & CALCULATE ( SELECTEDVALUE ( dim_store[StoreTier] ) )
+            & "']",
+        ",", dim_store[StoreKey], ASC
+    )
+
+VAR _dimProd =
+    CONCATENATEX (
+        VALUES ( dim_product[ProductKey] ),
+        "[" & FORMAT ( dim_product[ProductKey], "0" )
+            & ",'" & CALCULATE ( SELECTEDVALUE ( dim_product[SKU] ) )
+            & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_product[ProductName] ) ),
+                BS, BS & BS ), Q, BS & Q ), "<", BS & "u003C" )
+            & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_product[Category] ) ),
+                BS, BS & BS ), Q, BS & Q ), "<", BS & "u003C" )
+            & "']",
+        ",", dim_product[ProductKey], ASC
+    )
+
+VAR _dimMonth =
+    CONCATENATEX (
+        _monthKeys,
+        "[" & FORMAT ( dim_date[YearMonthKey], "0" )
+            & ",'" & CALCULATE ( SELECTEDVALUE ( dim_date[YearMonthLabel] ) ) & "']",
+        ",", dim_date[YearMonthKey], ASC
+    )
+
+VAR _dimLine =
+    CONCATENATEX (
+        VALUES ( dim_pnl_layout[LineKey] ),
+        "[" & FORMAT ( dim_pnl_layout[LineKey], "0" )
+            & ",'" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_pnl_layout[LineLabel] ) ),
+                BS, BS & BS ), Q, BS & Q ), "<", BS & "u003C" )
+            & "','" & CALCULATE ( SELECTEDVALUE ( dim_pnl_layout[RowType] ) ) & "'"
+            & "," & FORMAT ( CALCULATE ( SELECTEDVALUE ( dim_pnl_layout[Indent] ) ), "0" )
+            & "," & FORMAT ( CALCULATE ( SELECTEDVALUE ( dim_pnl_layout[IsBold] ) ), "0" )
+            & "]",
+        ",", dim_pnl_layout[LineKey], ASC
+    )
+
+// The bridge is many-to-many and already encodes every rollup, so no subtotal
+// is derived anywhere. A line total is the sum of its mapped accounts, exactly
+// as [P&L Line Value] computes it with TREATAS.
+VAR _bridge =
+    CONCATENATEX (
+        bridge_pnl_line_account,
+        FORMAT ( bridge_pnl_line_account[LineKey], "0" ) & ","
+            & FORMAT ( bridge_pnl_line_account[AccountKey], "0" ),
+        ","
+    )
+
+// ===========================================================================
+// FACTS
+// ===========================================================================
+// Sign is applied here, once, via [P&L Amount] / [Budget (Closed)], so costs
+// arrive negative and a subtotal is a plain sum in the browser.
+VAR _pnlGrain =
+    FILTER (
+        ADDCOLUMNS (
+            CROSSJOIN (
+                VALUES ( dim_account[AccountKey] ),
+                VALUES ( dim_store[StoreKey] ),
+                _monthKeys
+            ),
+            "@a", CALCULATE ( [P&L Amount] ),
+            "@b", CALCULATE ( [Budget (Closed)] )
+        ),
+        NOT ( ISBLANK ( [@a] ) && ISBLANK ( [@b] ) )
+    )
+VAR _pnlFacts =
+    CONCATENATEX (
+        _pnlGrain,
+        FORMAT ( dim_account[AccountKey], "0" ) & ","
+            & FORMAT ( dim_store[StoreKey], "0" ) & ","
+            & FORMAT ( dim_date[YearMonthKey], "0" ) & ","
+            & FORMAT ( ROUND ( COALESCE ( [@a], 0 ) * 100, 0 ), "0" ) & ","
+            & FORMAT ( ROUND ( COALESCE ( [@b], 0 ) * 100, 0 ), "0" ),
+        ","
+    )
+
+// SUMMARIZE over the fact gives only the combinations that actually exist,
+// which is ~40,200 of a possible 43,200.
+VAR _salesGrain =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            fact_sales,
+            dim_product[ProductKey], dim_store[StoreKey], dim_date[YearMonthKey]
+        ),
+        "@r", CALCULATE ( SUM ( fact_sales[Revenue] ) ),
+        "@u", CALCULATE ( SUM ( fact_sales[UnitsSold] ) ),
+        "@c", CALCULATE ( SUM ( fact_sales[Cost] ) )
+    )
+VAR _salesFacts =
+    CONCATENATEX (
+        _salesGrain,
+        FORMAT ( dim_product[ProductKey], "0" ) & ","
+            & FORMAT ( dim_store[StoreKey], "0" ) & ","
+            & FORMAT ( dim_date[YearMonthKey], "0" ) & ","
+            & FORMAT ( ROUND ( COALESCE ( [@r], 0 ) * 100, 0 ), "0" ) & ","
+            & FORMAT ( ROUND ( COALESCE ( [@u], 0 ), 0 ), "0" ) & ","
+            & FORMAT ( ROUND ( COALESCE ( [@c], 0 ) * 100, 0 ), "0" ),
+        ","
+    )
+
+// ===========================================================================
+VAR Payload =
+    "window.__tpPage={meta:{"
+        & "title:'TrailPeak Outfitters',"
+        & "subtitle:'Profit & Loss and Product Performance',"
+        & "company:'FINANCE " & DOT & " MONTHLY REPORTING',"
+        & "dataThrough:'" & [Data Through Label] & "',"
+        & "currency:'USD',locale:'en-US'},"
+        & "dim:{"
+            & "accounts:[" & _dimAcct & "],"
+            & "stores:[" & _dimStore & "],"
+            & "products:[" & _dimProd & "],"
+            & "months:[" & _dimMonth & "],"
+            & "lines:[" & _dimLine & "]},"
+        & "bridge:[" & _bridge & "],"
+        & "pnl:[" & _pnlFacts & "],"
+        & "sales:[" & _salesFacts & "]};"
+
+RETURN
+    "<div id='tpp-root'></div>"
+        & "<script>" & Payload
+        & "if(window.TPP&&window.TPP.render){window.TPP.render();}"
+        & "</script>"
+        & "<script src='" & CdnUrl & "'></script>"

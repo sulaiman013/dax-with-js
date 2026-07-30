@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TrailPeak - full page harness</title>
+<style>
+ *{box-sizing:border-box} body{margin:0;height:100vh;display:flex;flex-direction:column;
+   font:12.5px/1.5 "Segoe UI",system-ui,sans-serif;background:#0f172a;color:#e2e8f0}
+ body>header{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:7px 12px;
+   background:#1e293b;border-bottom:1px solid #334155}
+ body>header>h1{font-size:12px;margin:0 8px 0 0}
+ button{font:inherit;padding:4px 9px;border-radius:6px;border:1px solid #475569;
+   background:#334155;color:#e2e8f0;cursor:pointer}
+ button.p{background:#2d6a4f;border-color:#2d6a4f;color:#fff;font-weight:600}
+ #stage{flex:1 1 auto;min-height:0;position:relative}
+ #host{position:absolute;inset:0;overflow:hidden}
+ #log{flex:0 0 auto;max-height:78px;overflow:auto;padding:5px 12px;background:#020617;
+   font:11px/1.5 Consolas,monospace;color:#94a3b8;border-top:1px solid #1e293b}
+ #log .e{color:#f87171} #log .o{color:#4ade80}
+</style></head><body>
+<header><h1>TrailPeak full-page harness</h1>
+ <button class="p" id="xf">Simulate cross-filter</button>
+ <button id="rm">Remount</button>
+ <span id="sz"></span></header>
+<div id="stage"><div id="host"></div></div>
+<div id="log"></div>
+<script src="page-fixture.js"></script>
+<script>
+var CLOSE='<'+'/script>', BS=String.fromCharCode(92);
+var logEl=document.getElementById('log');
+function log(m,c){var d=document.createElement('div');if(c)d.className=c;
+  d.textContent=new Date().toISOString().slice(11,23)+'  '+m;logEl.appendChild(d);logEl.scrollTop=1e9;}
+function emit(){
+  var json=JSON.stringify(window.TP_PAGE_FIXTURE).replace(/</g,BS+'u003C');
+  document.getElementById('sz').textContent=' payload '+json.length.toLocaleString()+' chars ('+
+    (json.length/2100000*100).toFixed(1)+'% of cap)';
+  return "<div id='tpp-root'></div><script>window.__tpPage="+json+
+    ";if(window.TPP&&window.TPP.render){window.TPP.render();}"+CLOSE+
+    "<script src='trailpeak-page.js'>"+CLOSE;
+}
+function inject(host,html){
+  host.innerHTML=html;
+  var s=host.querySelectorAll('script');
+  for(var i=0;i<s.length;i++){
+    var o=s[i],f=document.createElement('script');
+    for(var a=0;a<o.attributes.length;a++)f.setAttribute(o.attributes[a].name,o.attributes[a].value);
+    if(!o.src)f.appendChild(document.createTextNode(o.textContent));
+    else{f.onload=function(){log('external script executed');};f.onerror=function(){log('script FAILED','e');};}
+    o.parentNode.replaceChild(f,o);
+  }
+}
+function mount(){document.getElementById('stage').innerHTML='<div id="host"></div>';
+  inject(document.getElementById('host'),emit());log('mounted');}
+document.getElementById('xf').addEventListener('click',function(){
+  var h=document.getElementById('host');
+  var before=h.querySelectorAll('.k-page').length;
+  inject(h,emit());
+  setTimeout(function(){
+    var after=h.querySelectorAll('.k-page').length, st=document.querySelectorAll('#tpp-css').length;
+    var msg='cross-filter: pages '+before+'->'+after+', style tags='+st;
+    log(after===1&&st===1?msg+'  OK idempotent':msg+'  NOT IDEMPOTENT', after===1&&st===1?'o':'e');
+  },260);
+});
+document.getElementById('rm').addEventListener('click',mount);
+window.addEventListener('error',function(e){log('error: '+(e.message||e.type),'e');});
+mount();
+</script></body></html>
