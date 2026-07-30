@@ -51,7 +51,7 @@
 
 JS Report Page =
 VAR CdnUrl =
-    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-page-v1.0.0/trailpeak/trailpeak-page.js"
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-page-v1.0.1/trailpeak/trailpeak-page.js"
 
 VAR BS = UNICHAR ( 92 )
 VAR DOT = UNICHAR ( 183 )

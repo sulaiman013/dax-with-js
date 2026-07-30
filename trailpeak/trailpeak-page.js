@@ -2,7 +2,7 @@
  * TrailPeak Outfitters - the ENTIRE report page as one Power BI visual
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-page-v1.0.0/trailpeak/trailpeak-page.js
+ * Serve   : https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-page-v1.0.1/trailpeak/trailpeak-page.js
  * License : MIT
  *
  * WHY ONE VISUAL
