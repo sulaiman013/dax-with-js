@@ -1,0 +1,5 @@
+# The served JS must be byte-consistent regardless of who clones it.
+*.js text eol=lf
+*.dax text eol=lf
+*.html text eol=lf
+*.md text eol=lf
