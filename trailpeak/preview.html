@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TrailPeak visuals - local test harness</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; height:100vh; display:flex; flex-direction:column;
+         font:13px/1.5 "Segoe UI", system-ui, sans-serif; background:#0f172a; color:#e2e8f0; }
+  /* Scoped to a direct child of body: the library renders its own <header>
+     and <h1>, and an unscoped rule here would bleed straight into it. */
+  body > header { flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+                  padding:9px 14px; background:#1e293b; border-bottom:1px solid #334155; }
+  body > header > h1 { font-size:13px; font-weight:700; margin:0 6px 0 0; }
+  .g { display:flex; align-items:center; gap:6px; }
+  .g > label { font-size:10.5px; text-transform:uppercase; letter-spacing:.07em;
+               color:#94a3b8; font-weight:700; }
+  select, button { font:inherit; padding:5px 10px; border-radius:6px;
+                   border:1px solid #475569; background:#334155; color:#e2e8f0; cursor:pointer; }
+  select:hover, button:hover { border-color:#64748b; }
+  button.primary { background:#2d6a4f; border-color:#2d6a4f; color:#fff; font-weight:600; }
+  button.primary:hover { background:#35805e; }
+  .sp { flex:1 1 auto; }
+  .c { font-variant-numeric:tabular-nums; color:#94a3b8; }
+  .c b { color:#4ade80; }
+  #stage { flex:1 1 auto; min-height:0; position:relative; background:#f1f5f9; padding:10px; }
+  #stage.narrow { padding:10px 28%; }
+  #host { position:absolute; inset:10px; overflow:hidden; }
+  #stage.narrow #host { left:28%; right:28%; }
+  iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#fff; }
+  #log { flex:0 0 auto; max-height:112px; overflow:auto; padding:7px 14px; background:#020617;
+         border-top:1px solid #1e293b; font:11.5px/1.55 Consolas, monospace;
+         color:#94a3b8; white-space:pre-wrap; }
+  #log .e { color:#f87171; }
+  #log .w { color:#fbbf24; }
+  #log .o { color:#4ade80; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TrailPeak harness</h1>
+  <div class="g">
+    <label for="mode">Mode</label>
+    <select id="mode">
+      <option value="local">Local file</option>
+      <option value="sandbox">Sandboxed + CDN</option>
+    </select>
+  </div>
+  <div class="g">
+    <label for="page">Page</label>
+    <select id="page">
+      <option value="pnl">P&amp;L statement</option>
+      <option value="pareto">Pareto</option>
+      <option value="kpi">KPI cards</option>
+    </select>
+  </div>
+  <div class="g">
+    <label for="variant">Data</label>
+    <select id="variant">
+      <option value="full">Full</option>
+      <option value="noBudget">Budget missing</option>
+      <option value="sparse">Sparse (3 products)</option>
+      <option value="empty">Empty</option>
+      <option value="nasty">Nasty strings</option>
+    </select>
+  </div>
+  <button class="primary" id="xf">Simulate cross-filter</button>
+  <button id="reload">Remount</button>
+  <button id="narrow">Toggle narrow</button>
+  <span class="c">executions: <b id="runs">0</b></span>
+  <div class="sp"></div>
+</header>
+
+<div id="stage"><div id="host"></div></div>
+<div id="log"></div>
+
+<script src="fixtures.js"></script>
+<script>
+/* ---------------------------------------------------------------------------
+ * Reproduces the one thing that actually breaks these visuals: the host wipes
+ * the DOM and re-inserts the script tags on every cross-filter. innerHTML does
+ * NOT execute scripts, so the HTML Content visual has to re-create the script
+ * elements. injectHtml() does exactly that. A library that is not idempotent
+ * shows up here as duplicated content, dead controls, or a blank box.
+ * ------------------------------------------------------------------------ */
+
+var CDN   = 'https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js';
+var LOCAL = 'trailpeak.js';
+var CLOSE = '<' + '/script>';   /* never spell this out inside an inline block */
+
+var runs = 0;
+var logEl = document.getElementById('log');
+function log(m, c) {
+  var d = document.createElement('div');
+  if (c) d.className = c;
+  d.textContent = new Date().toISOString().slice(11, 23) + '  ' + m;
+  logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+}
+
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+/* ---- variants: the shapes that break naive renderers ------------------- */
+function build(page, variant) {
+  if (variant === 'empty') {
+    var e = clone(window.TP_FIXTURES[page]);
+    if (e.pnl) e.pnl.rows = [];
+    if (e.pareto) e.pareto.products = [];
+    if (e.kpis) e.kpis = [];
+    return e;
+  }
+  var d = clone(window.TP_FIXTURES[page]);
+
+  if (variant === 'noBudget' && d.pnl) {
+    /* Budget genuinely absent. Must render as a dash, never as a zero, and
+       variance must disappear rather than equal the actual. */
+    for (var i = 0; i < d.pnl.rows.length; i++) d.pnl.rows[i].budget = null;
+    for (var k in d.pnl.children) {
+      for (var j = 0; j < d.pnl.children[k].length; j++) d.pnl.children[k][j].budget = null;
+    }
+    d.meta.subtitle = 'Jun 2026 · All Stores · no budget loaded';
+  }
+  if (variant === 'sparse' && d.pareto) {
+    d.pareto.products = d.pareto.products.slice(0, 3);
+    d.meta.subtitle = 'FY2026 · 3 products';
+  }
+  if (variant === 'nasty') {
+    d.meta.company = "O'Brien & Sons <b>bold?</b>";
+    d.meta.subtitle = 'Quote \' and amp & and tag <' + '/script> inline';
+    if (d.pnl && d.pnl.rows.length) {
+      d.pnl.rows[0].label = "Retail Sales <img src=x onerror='alert(1)'>";
+      d.pnl.rows[1].label = "O'Brien's & Co";
+    }
+    if (d.pareto && d.pareto.products.length) {
+      d.pareto.products[0].name = "<script>alert(1)" + CLOSE;
+      d.pareto.products[1].name = "Tundra & Co's 65L \"Pack\"";
+    }
+  }
+  return d;
+}
+
+/* ---- emit exactly what the DAX measure emits --------------------------- */
+var BS = String.fromCharCode(92);
+function neutralise(json) {
+  /* JSON.stringify does not escape "<", so a value containing a closing script
+     tag would end the inline block early and dump the payload on screen. This
+     is the same step 5 the DAX measure performs with UNICHAR(92) & 'u003C'. */
+  return json.replace(/</g, BS + 'u003C');
+}
+function emit(page, variant, src) {
+  var payload = 'window.__tpData=' + neutralise(JSON.stringify(build(page, variant))) + ';';
+  return "<div id='tp-root'></div>" +
+    '<script>' + payload + 'if(window.TP&&window.TP.render){window.TP.render();}' + CLOSE +
+    "<script src='" + src + "'>" + CLOSE;
+}
+
+function injectHtml(host, html) {
+  host.innerHTML = html;
+  var s = host.querySelectorAll('script');
+  for (var i = 0; i < s.length; i++) {
+    var old = s[i], fresh = document.createElement('script');
+    for (var a = 0; a < old.attributes.length; a++) {
+      fresh.setAttribute(old.attributes[a].name, old.attributes[a].value);
+    }
+    if (!old.src) fresh.appendChild(document.createTextNode(old.textContent));
+    else {
+      fresh.onload  = function () { runs++; paint(); log('external script executed'); };
+      fresh.onerror = function () { log('external script FAILED to load', 'e'); };
+    }
+    old.parentNode.replaceChild(fresh, old);
+  }
+}
+function paint() { document.getElementById('runs').textContent = runs; }
+
+var modeEl = document.getElementById('mode');
+var pageEl = document.getElementById('page');
+var varEl  = document.getElementById('variant');
+var stage  = document.getElementById('stage');
+
+function mountLocal() {
+  stage.innerHTML = '<div id="host"></div>';
+  injectHtml(document.getElementById('host'), emit(pageEl.value, varEl.value, LOCAL));
+  log('mounted local, page=' + pageEl.value + ' variant=' + varEl.value);
+}
+
+/* True reproduction of the Power BI environment: null origin, allow-scripts
+   only, script fetched cross-host from jsDelivr. */
+function mountSandbox() {
+  stage.innerHTML = '';
+  var f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-scripts');
+  f.setAttribute('srcdoc', '<!doctype html><html><head><meta charset="utf-8"></head><body>' +
+    emit(pageEl.value, varEl.value, CDN) + '</body></html>');
+  stage.appendChild(f);
+  log('mounted sandboxed iframe (null origin) against ' + CDN);
+  log('blank here means the tag is not published yet, or CORS/MIME is wrong', 'w');
+}
+
+function mount() {
+  runs = 0; paint();
+  if (modeEl.value === 'sandbox') mountSandbox(); else mountLocal();
+}
+
+document.getElementById('xf').addEventListener('click', function () {
+  if (modeEl.value === 'sandbox') { mountSandbox(); return; }
+  var host = document.getElementById('host');
+  var before = host.querySelectorAll('.tp-card,.tp-kpis').length;
+  injectHtml(host, emit(pageEl.value, varEl.value, LOCAL));
+  setTimeout(function () {
+    var after  = host.querySelectorAll('.tp-card,.tp-kpis').length;
+    var styles = document.querySelectorAll('#tp-css').length;
+    var roots  = host.querySelectorAll('#tp-root').length;
+    var msg = 'cross-filter: shells ' + before + '->' + after +
+              ', style tags=' + styles + ', roots=' + roots;
+    if (after === 1 && styles === 1 && roots === 1) log(msg + '  OK idempotent', 'o');
+    else log(msg + '  NOT IDEMPOTENT', 'e');
+  }, 240);
+});
+
+document.getElementById('reload').addEventListener('click', mount);
+document.getElementById('narrow').addEventListener('click', function () {
+  stage.classList.toggle('narrow');
+  log('viewport ' + (stage.classList.contains('narrow') ? 'narrowed' : 'restored'));
+});
+modeEl.addEventListener('change', mount);
+pageEl.addEventListener('change', mount);
+varEl.addEventListener('change', mount);
+window.addEventListener('error', function (e) { log('window error: ' + (e.message || e.type), 'e'); });
+
+log('harness ready. "Simulate cross-filter" is the test that matters.');
+mount();
+</script>
+</body>
+</html>

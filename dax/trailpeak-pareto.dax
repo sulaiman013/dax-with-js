@@ -1,0 +1,121 @@
+// ============================================================================
+// JS Pareto Analysis
+// ----------------------------------------------------------------------------
+// Replaces [HTML Pareto Analysis], which was ~125 lines of DAX computing SVG
+// geometry by hand in VARs and capping the chart at 20 bars.
+//
+// THIS MEASURE RETURNS DATA. It computes no geometry, no ranking, no cumulative
+// share, no colours and no labels. The browser does all of that.
+//
+// WHAT THIS RETIRES
+//   [Product Rank]           O(n^2): RANKX over FILTER(ALLSELECTED(dim_product))
+//   [Cumulative Revenue]     O(n^2): SUMX over FILTER(ALLSELECTED(dim_product))
+//   [Cumulative Revenue %]   wraps the above
+//   [Revenue Share %]        a division
+//   [Pareto Bar Color]       returns a hex string
+//   [Pareto Cum Label]       returns a formatted percentage
+//
+// The old HTML measure evaluated [Product Rank] and [Cumulative Revenue %] in
+// three separate CONCATENATEX passes (bars, line points, dots). With 120
+// products that is a lot of quadratic work to draw a chart. Here each product
+// is touched once, and the browser ranks and cumulates in O(n log n).
+//
+// The 20-bar cap is also gone. It only ever existed because hand-placing 120
+// rotated SVG labels in DAX is untenable.
+//
+// PREREQUISITE (one line, add to the _Measures table):
+//   Product Margin = SUM ( fact_sales[Revenue] ) - SUM ( fact_sales[Cost] )
+//
+// TARGET VISUAL
+//   HTML Content by Daniel Marsh-Patrick, the REGULAR (uncertified) edition.
+//   The `lite` edition the original prototypes targeted is certified but blocks
+//   all external URLs, so it cannot load the CDN script. This must change.
+// ============================================================================
+
+JS Pareto Analysis =
+VAR CdnUrl =
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
+
+// A backslash. Built from its code point because a bare "\" in DAX reads like a
+// typo and does not survive copy-paste through JSON-based tooling.
+VAR BS = UNICHAR ( 92 )
+
+// -- meta --------------------------------------------------------------------
+VAR _scope =
+    SWITCH (
+        TRUE (),
+        HASONEVALUE ( dim_store[StoreName] ), SELECTEDVALUE ( dim_store[StoreName] ),
+        HASONEVALUE ( dim_store[Region] ), SELECTEDVALUE ( dim_store[Region] ) & " Region",
+        "All Stores"
+    )
+VAR _lastClosed = COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+VAR _firstData = CALCULATE ( MIN ( fact_pnl_actuals[Date] ), REMOVEFILTERS () )
+VAR _period =
+    IF (
+        HASONEVALUE ( dim_date[YearMonthKey] ),
+        SELECTEDVALUE ( dim_date[YearMonthLabel] ),
+        FORMAT ( MAX ( MIN ( dim_date[Date] ), _firstData ), "MMM YYYY" ) & " to "
+            & FORMAT ( MIN ( MAX ( dim_date[Date] ), _lastClosed ), "MMM YYYY" )
+    )
+
+VAR _sold = FILTER ( ALLSELECTED ( dim_product ), NOT ISBLANK ( [Product Revenue] ) )
+VAR _n = COUNTROWS ( _sold )
+
+// -- the payload: one object per product, no ordering, no derived columns ----
+// Money is emitted as INTEGER MINOR UNITS (cents) and counts as plain integers.
+// FORMAT(x, "0") emits no decimal or thousand separator in any locale, so a
+// de-DE or fr-FR workspace cannot corrupt the payload. The browser divides by
+// 100 on the way back.
+VAR _products =
+    CONCATENATEX (
+        _sold,
+        VAR _rev = [Product Revenue]
+        VAR _uni = [Product Units]
+        VAR _mar = [Product Margin]
+        RETURN
+            "{key:" & FORMAT ( dim_product[ProductKey], "0" )
+                & ",sku:'"
+                & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    dim_product[SKU],
+                    BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+                    UNICHAR ( 10 ), " " ), "<", BS & "u003C" )
+                & "',name:'"
+                & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    dim_product[ProductName],
+                    BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+                    UNICHAR ( 10 ), " " ), "<", BS & "u003C" )
+                & "',category:'"
+                & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    dim_product[Category],
+                    BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+                    UNICHAR ( 10 ), " " ), "<", BS & "u003C" )
+                & "',revenue:" & IF ( ISBLANK ( _rev ), "null", FORMAT ( ROUND ( _rev * 100, 0 ), "0" ) )
+                & ",units:" & IF ( ISBLANK ( _uni ), "null", FORMAT ( ROUND ( _uni, 0 ), "0" ) )
+                & ",margin:" & IF ( ISBLANK ( _mar ), "null", FORMAT ( ROUND ( _mar * 100, 0 ), "0" ) )
+                & "}",
+        ","
+    )
+
+VAR Payload =
+    "window.__tpData={page:'pareto',locale:'en-US',currency:'USD',meta:{"
+        & "title:'Product Revenue Pareto',company:'TrailPeak Outfitters',"
+        & "subtitle:'" & _period & " " & UNICHAR ( 183 ) & " " & _scope & " "
+        & UNICHAR ( 183 ) & " " & FORMAT ( _n, "0" ) & " products',"
+        & "dataThrough:'" & [Data Through Label] & "',"
+        & "footnote:'Ranking and cumulative share computed in the browser'},"
+        & "pareto:{products:[" & _products & "]}};"
+
+RETURN
+    IF (
+        _n = 0,
+        "<div style='font-family:Segoe UI,sans-serif;color:#64748b;padding:24px;'>"
+            & "No product sales in the current selection.</div>",
+        "<div id='tp-root'></div>"
+            // Data first. On every cross-filter after the first the library is
+            // already installed in this iframe, so nudge it to re-render with
+            // the new values. TP.render is coalesced to one paint per frame.
+            & "<script>" & Payload
+            & "if(window.TP&&window.TP.render){window.TP.render();}"
+            & "</script>"
+            & "<script src='" & CdnUrl & "'></script>"
+    )

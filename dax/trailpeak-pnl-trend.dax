@@ -1,0 +1,84 @@
+// ============================================================================
+// JS P&L Statement - the per-line monthly trend add-on
+// ----------------------------------------------------------------------------
+// This is a SNIPPET, not a standalone measure. It adds the `series` block to
+// trailpeak-pnl.dax so that clicking any statement line opens a 30-month
+// Actual-vs-Budget sparkline underneath it.
+//
+// Kept separate on purpose, because it is the one part of this rebuild with a
+// real cost. Everything else in trailpeak-pnl.dax touches each line once.
+//
+// THE COST, stated honestly
+//   The nested CONCATENATEX evaluates [P&L Line Value] and [Budget Line Value]
+//   once per line per month. With 18 lines and 30 months that is 540 x 2 = 1080
+//   measure evaluations, each resolving accounts through the bridge via TREATAS.
+//   That is the same order of work the ORIGINAL Pareto measure did every render,
+//   so it is not unprecedented here, but it is not free either.
+//
+//   Measure the query before shipping it. If it is slow, the options are:
+//     a) drop to 12 months by filtering _monthsAll
+//     b) ship the trend as a separate measure on a separate visual, so it only
+//        evaluates when that visual is on screen
+//     c) leave it out; the base measure is complete without it
+//
+// PAYLOAD SIZE
+//   540 points serialise to roughly 20 KB. A DAX measure holds about 2.1M
+//   characters, so this uses around 1% of the budget. Size is not the concern.
+//   Evaluation time is.
+//
+// ----------------------------------------------------------------------------
+// HOW TO APPLY
+//   1. Paste the two VAR blocks below into trailpeak-pnl.dax, after `VAR _children`.
+//   2. In that file, change the `pnl:{...}` fragment of `VAR Payload` from
+//
+//          & "pnl:{rows:[" & _rows & "],children:{" & _children & "}}};"
+//
+//      to
+//
+//          & "pnl:{rows:[" & _rows & "],children:{" & _children
+//          & "},series:{" & _series & "}}};"
+// ============================================================================
+
+
+// -- the months to plot ------------------------------------------------------
+// REMOVEFILTERS on dim_date deliberately ignores the page's date slicer: the
+// point of a trend is to show the line's history, not just the selected month.
+// Capped at the last closed month so an unclosed period does not draw a cliff.
+VAR _monthsAll =
+    CALCULATETABLE (
+        VALUES ( dim_date[YearMonthKey] ),
+        REMOVEFILTERS ( dim_date ),
+        dim_date[Date] <= COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+    )
+
+// -- one series per statement line -------------------------------------------
+// Emits { "<LineKey>": [ {m:'YYYYMM', a:<cents>, b:<cents>}, ... ] }
+VAR _series =
+    CONCATENATEX (
+        _lines,
+        VAR _pts =
+            CONCATENATEX (
+                _monthsAll,
+                VAR _ma =
+                    CALCULATE (
+                        [P&L Line Value],
+                        REMOVEFILTERS ( dim_date ),
+                        VALUES ( dim_date[YearMonthKey] )
+                    )
+                VAR _mb =
+                    CALCULATE (
+                        [Budget Line Value],
+                        REMOVEFILTERS ( dim_date ),
+                        VALUES ( dim_date[YearMonthKey] )
+                    )
+                RETURN
+                    "{m:'" & FORMAT ( dim_date[YearMonthKey], "0" ) & "'"
+                        & ",a:" & IF ( ISBLANK ( _ma ), "null", FORMAT ( ROUND ( _ma * 100, 0 ), "0" ) )
+                        & ",b:" & IF ( ISBLANK ( _mb ), "null", FORMAT ( ROUND ( _mb * 100, 0 ), "0" ) )
+                        & "}",
+                ",",
+                dim_date[YearMonthKey], ASC
+            )
+        RETURN "'" & FORMAT ( dim_pnl_layout[LineKey], "0" ) & "':[" & _pts & "]",
+        ","
+    )

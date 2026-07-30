@@ -1,0 +1,106 @@
+// ============================================================================
+// JS KPI Cards
+// ----------------------------------------------------------------------------
+// Replaces EIGHT separate HTML-returning measures with one:
+//   [KPI Revenue Card]  [KPI Gross Margin Card]  [KPI EBITDA Card]
+//   [KPI Operating Profit Card]  [KPI Product Revenue Card]
+//   [KPI Units Sold Card]  [KPI Vital Few Card]  [KPI Top Product Card]
+//
+// Each of those built its own card chrome as an HTML string, which meant eight
+// copies of the same padding, border-radius, font-size and colour literals. A
+// change to the card design was an eight-place edit. Here the chrome lives in
+// one CSS block in the library and this measure emits only the numbers.
+//
+// It also adds sparklines, which none of the eight had, because drawing an
+// inline trend in DAX would have meant a nested CONCATENATEX per card.
+//
+// SCALING CONVENTION
+//   format 'money' -> value is INTEGER MINOR UNITS (cents)
+//   format 'pct'   -> value is INTEGER BASIS POINTS (7845 = 78.45%)
+//   format 'num'   -> value is a plain integer
+//   format 'text'  -> value is a string, emitted already escaped
+// ============================================================================
+
+JS KPI Cards =
+VAR CdnUrl =
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
+
+VAR BS = UNICHAR ( 92 )
+
+// -- helpers -----------------------------------------------------------------
+VAR _rev = [Total Revenue]
+VAR _revB = CALCULATE ( [Budget (Closed)], REMOVEFILTERS ( dim_account ), dim_account[Category] = "Revenue" )
+VAR _gm = [Gross Margin %]
+VAR _ebitda = [EBITDA]
+VAR _op = [Operating Profit]
+VAR _prodRev = [Product Revenue]
+VAR _units = [Product Units]
+
+// Vital few: how many products reach 80% of revenue. Computed once here rather
+// than per-row, unlike the O(n^2) [Cumulative Revenue %] the old card used.
+VAR _sold = FILTER ( ALLSELECTED ( dim_product ), NOT ISBLANK ( [Product Revenue] ) )
+VAR _nAll = COUNTROWS ( _sold )
+VAR _n80 = COUNTROWS ( FILTER ( _sold, [Cumulative Revenue %] < 0.80 ) ) + 1
+VAR _topProduct =
+    CALCULATE (
+        SELECTEDVALUE ( dim_product[ProductName] ),
+        TOPN ( 1, _sold, [Product Revenue], DESC, dim_product[ProductKey], ASC )
+    )
+
+// A 12-month sparkline for the revenue card. One value per month, and the
+// browser scales and draws it.
+VAR _months =
+    TOPN (
+        12,
+        CALCULATETABLE (
+            VALUES ( dim_date[YearMonthKey] ),
+            REMOVEFILTERS ( dim_date ),
+            dim_date[Date] <= COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+        ),
+        dim_date[YearMonthKey], DESC
+    )
+VAR _revSpark =
+    CONCATENATEX (
+        _months,
+        VAR _v = CALCULATE ( [Total Revenue], REMOVEFILTERS ( dim_date ), VALUES ( dim_date[YearMonthKey] ) )
+        RETURN IF ( ISBLANK ( _v ), "0", FORMAT ( ROUND ( _v * 100, 0 ), "0" ) ),
+        ",",
+        dim_date[YearMonthKey], ASC
+    )
+
+VAR _topEsc =
+    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+        COALESCE ( _topProduct, "n/a" ),
+        BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+        UNICHAR ( 10 ), " " ), "<", BS & "u003C" )
+
+VAR Payload =
+    "window.__tpData={page:'kpi',locale:'en-US',currency:'USD',kpis:["
+        & "{label:'Total Revenue',format:'money',value:"
+            & IF ( ISBLANK ( _rev ), "null", FORMAT ( ROUND ( _rev * 100, 0 ), "0" ) )
+            & ",delta:" & IF ( ISBLANK ( _rev ) || ISBLANK ( _revB ), "null",
+                FORMAT ( ROUND ( ( _rev - _revB ) * 100, 0 ), "0" ) )
+            & ",deltaLabel:'vs budget',spark:[" & _revSpark & "]},"
+        & "{label:'Gross Margin',format:'pct',value:"
+            & IF ( ISBLANK ( _gm ), "null", FORMAT ( ROUND ( _gm * 10000, 0 ), "0" ) )
+            & ",deltaLabel:'of revenue'},"
+        & "{label:'EBITDA',format:'money',value:"
+            & IF ( ISBLANK ( _ebitda ), "null", FORMAT ( ROUND ( _ebitda * 100, 0 ), "0" ) ) & "},"
+        & "{label:'Operating Profit',format:'money',value:"
+            & IF ( ISBLANK ( _op ), "null", FORMAT ( ROUND ( _op * 100, 0 ), "0" ) ) & "},"
+        & "{label:'Product Revenue',format:'money',value:"
+            & IF ( ISBLANK ( _prodRev ), "null", FORMAT ( ROUND ( _prodRev * 100, 0 ), "0" ) ) & "},"
+        & "{label:'Units Sold',format:'num',value:"
+            & IF ( ISBLANK ( _units ), "null", FORMAT ( ROUND ( _units, 0 ), "0" ) ) & "},"
+        & "{label:'Vital Few',format:'text',value:'"
+            & IF ( ISBLANK ( _nAll ), "n/a",
+                FORMAT ( _n80, "0" ) & " of " & FORMAT ( _nAll, "0" ) & " SKUs" ) & "'},"
+        & "{label:'Top Product',format:'text',value:'" & _topEsc & "'}"
+        & "]};"
+
+RETURN
+    "<div id='tp-root'></div>"
+        & "<script>" & Payload
+        & "if(window.TP&&window.TP.render){window.TP.render();}"
+        & "</script>"
+        & "<script src='" & CdnUrl & "'></script>"

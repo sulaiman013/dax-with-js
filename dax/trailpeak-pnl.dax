@@ -1,0 +1,143 @@
+// ============================================================================
+// JS P&L Statement
+// ----------------------------------------------------------------------------
+// Replaces [HTML P&L Statement], which built the whole statement as one HTML
+// string: five inline style attributes per row, eighteen rows, six design
+// tokens repeated as hex literals throughout.
+//
+// THIS MEASURE RETURNS DATA. No markup, no CSS, no colours, no number
+// formatting. The browser owns all of it.
+//
+// WHAT THIS RETIRES
+//   [Line Actual Text]     IF(ISBLANK(..), "-", FORMAT(.., "#,##0;(#,##0)"))
+//   [Line Budget Text]     same
+//   [Line Variance Text]   same with a + sign
+//   [Line Var % Text]      same for percentages
+//   [Line Variance Color]  returns "#16a34a" or "#dc2626"
+//
+// Those five exist only because a Deneb spec cannot format a number or pick a
+// colour the way a finance audience expects. JavaScript does both natively, so
+// they can go. [Line Variance] and [Line Variance %] also leave the query path:
+// the browser subtracts and divides.
+//
+// WHAT THIS ADDS THAT THE OLD MEASURE COULD NOT DO
+//   - `children` lets a Group row (Payroll, Occupancy, ...) expand in place to
+//     its constituent accounts. Impossible in a flat HTML string.
+//   - Column show/hide, variance magnitude bars, row hover, keyboard access.
+//   - See trailpeak-pnl-trend.dax for the per-line monthly trend variant.
+//
+// PREREQUISITE: none. Every measure referenced already exists in the model.
+//
+// TARGET VISUAL
+//   HTML Content, the REGULAR (uncertified) edition. The `lite` edition the
+//   original prototypes targeted blocks external URLs and will not work.
+// ============================================================================
+
+JS P&L Statement =
+VAR CdnUrl =
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
+
+VAR BS = UNICHAR ( 92 )
+VAR DOT = UNICHAR ( 183 )
+
+// -- meta --------------------------------------------------------------------
+VAR _lastClosed = COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+VAR _firstData = CALCULATE ( MIN ( fact_pnl_actuals[Date] ), REMOVEFILTERS () )
+VAR _period =
+    IF (
+        HASONEVALUE ( dim_date[YearMonthKey] ),
+        SELECTEDVALUE ( dim_date[YearMonthLabel] ),
+        FORMAT ( MAX ( MIN ( dim_date[Date] ), _firstData ), "MMM YYYY" ) & " to "
+            & FORMAT ( MIN ( MAX ( dim_date[Date] ), _lastClosed ), "MMM YYYY" )
+    )
+VAR _scope =
+    SWITCH (
+        TRUE (),
+        HASONEVALUE ( dim_store[StoreName] ), SELECTEDVALUE ( dim_store[StoreName] ),
+        HASONEVALUE ( dim_store[Region] ), SELECTEDVALUE ( dim_store[Region] ) & " Region",
+        "All Stores"
+    )
+
+VAR _lines = ALLSELECTED ( dim_pnl_layout )
+VAR _n = COUNTROWS ( _lines )
+
+// -- statement rows ----------------------------------------------------------
+// Money as INTEGER MINOR UNITS (cents). FORMAT(x, "0") emits no separator in
+// any locale, so a non-en workspace cannot corrupt the payload.
+// A blank stays `null`, never 0: a missing budget must render as a dash, and a
+// zero would silently turn into a 100% adverse variance.
+VAR _rows =
+    CONCATENATEX (
+        _lines,
+        VAR _a = [P&L Line Value]
+        VAR _b = [Budget Line Value]
+        RETURN
+            "{key:" & FORMAT ( dim_pnl_layout[LineKey], "0" )
+                & ",label:'"
+                & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    dim_pnl_layout[LineLabel],
+                    BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+                    UNICHAR ( 10 ), " " ), "<", BS & "u003C" )
+                & "',rowType:'" & dim_pnl_layout[RowType] & "'"
+                & ",indent:" & FORMAT ( dim_pnl_layout[Indent], "0" )
+                & ",bold:" & IF ( dim_pnl_layout[IsBold] = 1, "true", "false" )
+                & ",actual:" & IF ( ISBLANK ( _a ), "null", FORMAT ( ROUND ( _a * 100, 0 ), "0" ) )
+                & ",budget:" & IF ( ISBLANK ( _b ), "null", FORMAT ( ROUND ( _b * 100, 0 ), "0" ) )
+                & "}",
+        ",",
+        dim_pnl_layout[LineKey], ASC
+    )
+
+// -- expandable account detail for Group rows --------------------------------
+// Walks the bridge to get the accounts behind each Group line. Thirteen extra
+// measure evaluations across five groups, so the cost is negligible, and it
+// buys drill-down the flat HTML string could never offer.
+VAR _children =
+    CONCATENATEX (
+        FILTER ( _lines, dim_pnl_layout[RowType] = "Group" ),
+        VAR _accts = CALCULATETABLE ( VALUES ( bridge_pnl_line_account[AccountKey] ) )
+        VAR _kids =
+            CONCATENATEX (
+                CALCULATETABLE (
+                    VALUES ( dim_account[Account] ),
+                    REMOVEFILTERS ( dim_account ),
+                    TREATAS ( _accts, dim_account[AccountKey] )
+                ),
+                VAR _ka = CALCULATE ( [P&L Amount], REMOVEFILTERS ( dim_pnl_layout ) )
+                VAR _kb = CALCULATE ( [Budget (Closed)], REMOVEFILTERS ( dim_pnl_layout ) )
+                RETURN
+                    "{label:'"
+                        & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                            dim_account[Account],
+                            BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+                            UNICHAR ( 10 ), " " ), "<", BS & "u003C" )
+                        & "',actual:" & IF ( ISBLANK ( _ka ), "null", FORMAT ( ROUND ( _ka * 100, 0 ), "0" ) )
+                        & ",budget:" & IF ( ISBLANK ( _kb ), "null", FORMAT ( ROUND ( _kb * 100, 0 ), "0" ) )
+                        & "}",
+                ",",
+                dim_account[Account], ASC
+            )
+        RETURN "'" & FORMAT ( dim_pnl_layout[LineKey], "0" ) & "':[" & _kids & "]",
+        ","
+    )
+
+VAR Payload =
+    "window.__tpData={page:'pnl',locale:'en-US',currency:'USD',meta:{"
+        & "title:'Profit & Loss Statement',company:'TrailPeak Outfitters',"
+        & "subtitle:'" & _period & " " & DOT & " " & _scope & " " & DOT & " Actual vs Budget',"
+        & "dataThrough:'" & [Data Through Label] & "',"
+        & "footnote:'Variance blank for unclosed months " & DOT
+        & " rendered by JavaScript from a CDN'},"
+        & "pnl:{rows:[" & _rows & "],children:{" & _children & "}}};"
+
+RETURN
+    IF (
+        _n = 0,
+        "<div style='font-family:Segoe UI,sans-serif;color:#64748b;padding:24px;'>"
+            & "No statement layout rows in the current selection.</div>",
+        "<div id='tp-root'></div>"
+            & "<script>" & Payload
+            & "if(window.TP&&window.TP.render){window.TP.render();}"
+            & "</script>"
+            & "<script src='" & CdnUrl & "'></script>"
+    )
