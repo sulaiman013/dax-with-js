@@ -35,7 +35,7 @@
 
 JS P&L Statement =
 VAR CdnUrl =
-    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
 
 VAR BS = UNICHAR ( 92 )
 VAR DOT = UNICHAR ( 183 )

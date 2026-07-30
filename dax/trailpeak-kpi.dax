@@ -23,7 +23,7 @@
 
 JS KPI Cards =
 VAR CdnUrl =
-    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-v1.0.0/trailpeak/trailpeak.js"
 
 VAR BS = UNICHAR ( 92 )
 
@@ -49,20 +49,38 @@ VAR _topProduct =
 
 // A 12-month sparkline for the revenue card. One value per month, and the
 // browser scales and draws it.
+// The cutoff MUST be resolved to a scalar VAR first. A boolean filter argument
+// to CALCULATETABLE cannot contain a measure reference or an aggregation: the
+// engine reports "A function 'PLACEHOLDER' has been used in a True/False
+// expression that is used as a table filter expression."
+VAR _cutoff =
+    COALESCE (
+        [Last Closed Date],
+        CALCULATE ( MAX ( dim_date[Date] ), REMOVEFILTERS ( dim_date ) )
+    )
 VAR _months =
     TOPN (
         12,
         CALCULATETABLE (
             VALUES ( dim_date[YearMonthKey] ),
             REMOVEFILTERS ( dim_date ),
-            dim_date[Date] <= COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+            dim_date[Date] <= _cutoff
         ),
         dim_date[YearMonthKey], DESC
     )
+// Capture the current key into a VAR too. VALUES() here would return every
+// month rather than the row being iterated, so every spark point would be
+// identical.
 VAR _revSpark =
     CONCATENATEX (
         _months,
-        VAR _v = CALCULATE ( [Total Revenue], REMOVEFILTERS ( dim_date ), VALUES ( dim_date[YearMonthKey] ) )
+        VAR _k = dim_date[YearMonthKey]
+        VAR _v =
+            CALCULATE (
+                [Total Revenue],
+                REMOVEFILTERS ( dim_date ),
+                dim_date[YearMonthKey] = _k
+            )
         RETURN IF ( ISBLANK ( _v ), "0", FORMAT ( ROUND ( _v * 100, 0 ), "0" ) ),
         ",",
         dim_date[YearMonthKey], ASC
