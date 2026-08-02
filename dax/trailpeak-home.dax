@@ -302,30 +302,64 @@ VAR Payload =
 VAR AltUrl =
     "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js"
 
+// Timing note, learned the hard way in the Service rather than in Desktop.
+// A cold fetch through the Service took longer than the original seven second
+// deadline, so the loader painted a failure, and then the script arrived and
+// repainted over it. The page worked; the user saw a lie first. Two rules come
+// out of that:
+//
+//   1. NEVER paint a failure to buy information. Retry silently, and only say
+//      something once an onerror has actually fired or the long stop is hit.
+//   2. Paint a LOADING state immediately, because the moment this HTML lands
+//      Power BI removes its own spinner, and a black rectangle reads as broken.
+//
+// The placeholder is a CHILD of the root, never the root itself. render() does
+// root.innerHTML = '' and would not clear inline styles set on the root, so
+// styling the root here would silently corrupt the real layout later.
 VAR Watchdog =
     "(function(){"
-    & "function say(t,d){var r=document.getElementById('tph-root');if(!r)return;"
-    & "r.style.cssText='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;"
-    & "padding:34px;background:#04060c;height:100%';r.textContent='';"
+    & "var R=function(){return document.getElementById('tph-root');};"
+    & "var up=function(){return !!(window.TPH&&window.TPH.render);};"
+    & "function box(){var r=R();if(!r)return null;r.textContent='';"
+    & "var d=document.createElement('div');"
+    & "d.style.cssText='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;"
+    & "padding:36px;background:#04060c;position:absolute;inset:0';"
+    & "r.appendChild(d);return d;}"
+    & "function wait(){var d=box();if(!d)return;"
+    & "var h=document.createElement('div');"
+    & "h.style.cssText='font:600 12px/1 Segoe UI,sans-serif;letter-spacing:.18em;"
+    & "text-transform:uppercase;color:#22d3ee;opacity:.85';"
+    & "h.textContent='Loading the network view';"
+    & "var p=document.createElement('div');p.style.marginTop='10px';p.style.opacity='.65';"
+    & "p.textContent='Fetching the renderer. The first load on a new tag can take a moment.';"
+    & "d.appendChild(h);d.appendChild(p);}"
+    & "function bad(t,m){var d=box();if(!d)return;"
     & "var h=document.createElement('b');h.style.color='#f87171';h.textContent=t;"
-    & "var p=document.createElement('div');p.style.marginTop='8px';p.textContent=d;"
-    & "r.appendChild(h);r.appendChild(p);}"
-    & "function grab(u,ok,bad){var s=document.createElement('script');s.src=u;s.async=false;"
-    & "s.onload=ok;s.onerror=bad;(document.head||document.documentElement).appendChild(s);}"
-    & "setTimeout(function(){"
-    & "if(window.TPH){if(window.TPH.render)window.TPH.render();return;}"
-    & "grab('" & AltUrl & "',function(){setTimeout(function(){"
-    & "if(window.TPH){if(window.TPH.render)window.TPH.render();return;}"
-    & "say('The renderer loaded but did not install.',"
-    & "'A CDN returned the file and it executed, but window.TPH was never set. "
-    & "That points at a script error inside the renderer rather than at the network.');"
-    & "},1500);},function(){"
-    & "say('The renderer could not be fetched.',"
+    & "var p=document.createElement('div');p.style.marginTop='8px';p.textContent=m;"
+    & "d.appendChild(h);d.appendChild(p);}"
+    & "function grab(u,ok,err){var s=document.createElement('script');s.src=u;s.async=false;"
+    & "s.onload=ok;s.onerror=err;(document.head||document.documentElement).appendChild(s);}"
+    // Already installed means this is a cross-filter, not a cold start. Render
+    // straight away and never show the placeholder, or every interaction blinks.
+    & "if(up()){window.TPH.render();return;}"
+    & "wait();"
+    & "var said=false;"
+    & "function give(t,m){if(said||up())return;said=true;bad(t,m);}"
+    // Stage 1: retry from the second host, silently.
+    & "setTimeout(function(){if(up())return;grab('" & AltUrl & "',function(){"
+    & "setTimeout(function(){give('The renderer loaded but did not install.',"
+    & "'A CDN returned the file and it executed, but window.TPH was never set. That points "
+    & "at a script error inside the renderer, not at the network.');},2500);},function(){"
+    & "give('The renderer could not be fetched.',"
     & "'The measure produced its payload, so the model and the DAX are fine. Neither "
-    & "cdn.statically.io nor cdn.jsdelivr.net could be reached from this machine. That is "
-    & "egress, not the tag: check the tenant firewall and any corporate proxy. Also confirm "
-    & "you installed HTML Content (standard), not HTML Content (lite), which strips scripts.');"
-    & "});},7000);})();"
+    & "cdn.statically.io nor cdn.jsdelivr.net could be reached. That is egress, not the tag: "
+    & "check the tenant firewall and any corporate proxy. Also confirm the visual is "
+    & "HTML Content (standard) and not HTML Content (lite), which strips scripts.');});},9000);"
+    // Stage 2: the long stop, for a host that neither loads nor errors.
+    & "setTimeout(function(){give('The renderer did not arrive.',"
+    & "'Both CDN hosts were tried and neither finished within 30 seconds. This is almost "
+    & "always a proxy holding the request open. The model and the DAX are fine.');},30000);"
+    & "})();"
 
 VAR Guard =
     "<div style='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;padding:34px;"
