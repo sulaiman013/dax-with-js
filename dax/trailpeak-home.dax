@@ -1,0 +1,321 @@
+// ============================================================================
+// TrailPeak Outfitters - HOME
+// The landing page of the report as a single data-only DAX measure.
+// ----------------------------------------------------------------------------
+// Renderer : trailpeak/trailpeak-home.js  (hand-written WebGL2, no Three.js)
+// Serve    : https://cdn.statically.io/gh/sulaiman013/dax-with-js
+//              @trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js
+//
+// This measure ships AGGREGATES ONLY, roughly 5KB, against a ~2,100,000
+// character ceiling. The one-page build [JS Report Page] ships facts at grain
+// and costs 1,369,965 characters; this one is deliberately the opposite. A
+// landing page has to paint fast, so it carries the least data that can still
+// be honest.
+//
+// RULES THIS MEASURE FOLLOWS, ALL OF THEM, WITHOUT EXCEPTION
+// ----------------------------------------------------------------------------
+// 1. Every text value goes through the SAME seven-step escape chain. Not five,
+//    and not "the ones that looked risky". U+2028 and U+2029 terminate a
+//    JavaScript string literal exactly like a newline does, and they survive a
+//    copy-paste out of Word, which is where dimension text actually comes from.
+// 2. Every number is an integer. Money in minor units (cents), ratios in basis
+//    points, both through FORMAT(x,"0"), which emits no separator and no
+//    decimal mark under any culture. The model culture is pinned en-US, but
+//    the point of the rule is that it would survive if that changed.
+// 3. Every blank emits the token null, never 0. A zero budget is not a missing
+//    budget: one is a plan of nothing, the other is no plan at all, and they
+//    have to look different on screen.
+// 4. The closed-month filter uses KEEPFILTERS, so a slicer or report filter on
+//    dim_date INTERSECTS with it instead of being replaced by it.
+// 5. The RETURN is guarded. An empty dimension emits a message, not a payload
+//    that will throw inside the renderer.
+// 6. A watchdog in the inline block reports a CDN failure. Without it, a
+//    blocked host paints a silent 1920x1080 white rectangle, and the code that
+//    would have explained that is in the file that failed to arrive.
+//
+// No colours, no formatted strings, no branding. The renderer owns all of it.
+// ============================================================================
+
+JS Home Page =
+VAR CdnUrl =
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js"
+
+// A backslash, built from its code point. A bare "\" in DAX is legal but reads
+// like a typo and does not survive copy-paste through JSON-based tooling.
+VAR BS = UNICHAR ( 92 )
+VAR Q  = "'"
+VAR LS = UNICHAR ( 8232 )   // LINE SEPARATOR
+VAR PS = UNICHAR ( 8233 )   // PARAGRAPH SEPARATOR
+
+// ---------------------------------------------------------------------------
+// SCOPE
+// KEEPFILTERS matters here. A bare boolean predicate inside CALCULATETABLE
+// expands to FILTER(ALL(dim_date[Date]), ...) and REPLACES any filter the
+// report already put on that column, so a 2025 slicer would silently be
+// ignored and the page would claim to show 30 months.
+// ---------------------------------------------------------------------------
+VAR _lastClosed = COALESCE ( [Last Closed Date], MAX ( dim_date[Date] ) )
+VAR _monthKeys =
+    CALCULATETABLE (
+        VALUES ( dim_date[YearMonthKey] ),
+        KEEPFILTERS ( dim_date[Date] <= _lastClosed )
+    )
+VAR _nMonths  = COALESCE ( COUNTROWS ( _monthKeys ), 0 )
+VAR _nStores  = COALESCE ( COUNTROWS ( VALUES ( dim_store[StoreKey] ) ), 0 )
+VAR _nRegions = COALESCE ( DISTINCTCOUNT ( dim_store[Region] ), 0 )
+VAR _nProds   = COALESCE ( DISTINCTCOUNT ( dim_product[ProductKey] ), 0 )
+
+// ---------------------------------------------------------------------------
+// STORES  [key, code, name, city, state, region, tier, rev, gmBp, op, var, units, sqft]
+// Coordinates are NOT here. Latitude and longitude are renderer reference data,
+// the same class of thing as a colour ramp, and belong in the JavaScript.
+// ---------------------------------------------------------------------------
+VAR _stores =
+    CONCATENATEX (
+        VALUES ( dim_store[StoreKey] ),
+        VAR _rev   = CALCULATE ( [Total Revenue] )
+        VAR _gm    = CALCULATE ( [Gross Margin %] )
+        VAR _op    = CALCULATE ( [Operating Profit] )
+        VAR _var   = CALCULATE ( [Variance] )
+        VAR _units = CALCULATE ( [Product Units] )
+        VAR _sqft  = CALCULATE ( SELECTEDVALUE ( dim_store[SquareFeet] ) )
+        RETURN
+            "[" & FORMAT ( dim_store[StoreKey], "0" )
+                & ",'" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_store[StoreCode] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_store[StoreName] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_store[City] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_store[State] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_store[Region] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_store[StoreTier] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "'," & IF ( ISBLANK ( _rev ),   "null", FORMAT ( ROUND ( _rev * 100, 0 ),   "0" ) )
+                & ","  & IF ( ISBLANK ( _gm ),    "null", FORMAT ( ROUND ( _gm * 10000, 0 ),  "0" ) )
+                & ","  & IF ( ISBLANK ( _op ),    "null", FORMAT ( ROUND ( _op * 100, 0 ),    "0" ) )
+                & ","  & IF ( ISBLANK ( _var ),   "null", FORMAT ( ROUND ( _var * 100, 0 ),   "0" ) )
+                & ","  & IF ( ISBLANK ( _units ), "null", FORMAT ( ROUND ( _units, 0 ),       "0" ) )
+                & ","  & IF ( ISBLANK ( _sqft ),  "null", FORMAT ( ROUND ( _sqft, 0 ),        "0" ) )
+                & "]",
+        ",", dim_store[StoreKey], ASC
+    )
+
+// ---------------------------------------------------------------------------
+// REGIONS  [name, rev, gmBp, op, nStores]
+// ---------------------------------------------------------------------------
+VAR _regions =
+    CONCATENATEX (
+        VALUES ( dim_store[Region] ),
+        VAR _rev = CALCULATE ( [Total Revenue] )
+        VAR _gm  = CALCULATE ( [Gross Margin %] )
+        VAR _op  = CALCULATE ( [Operating Profit] )
+        VAR _n   = CALCULATE ( DISTINCTCOUNT ( dim_store[StoreKey] ) )
+        RETURN
+            "['" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    dim_store[Region],
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "'," & IF ( ISBLANK ( _rev ), "null", FORMAT ( ROUND ( _rev * 100, 0 ),  "0" ) )
+                & ","  & IF ( ISBLANK ( _gm ),  "null", FORMAT ( ROUND ( _gm * 10000, 0 ), "0" ) )
+                & ","  & IF ( ISBLANK ( _op ),  "null", FORMAT ( ROUND ( _op * 100, 0 ),   "0" ) )
+                & ","  & IF ( ISBLANK ( _n ),   "null", FORMAT ( ROUND ( _n, 0 ),          "0" ) )
+                & "]",
+        ",", CALCULATE ( [Total Revenue] ), DESC
+    )
+
+// ---------------------------------------------------------------------------
+// TREND  [monthKey, label, rev, gp, op, budget]   chronological
+// ---------------------------------------------------------------------------
+VAR _trend =
+    CONCATENATEX (
+        _monthKeys,
+        VAR _rev = CALCULATE ( [Total Revenue] )
+        VAR _gp  = CALCULATE ( [Gross Profit] )
+        VAR _op  = CALCULATE ( [Operating Profit] )
+        VAR _bud = CALCULATE ( [Budget (Closed)] )
+        RETURN
+            "[" & FORMAT ( dim_date[YearMonthKey], "0" )
+                & ",'" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    CALCULATE ( SELECTEDVALUE ( dim_date[YearMonthLabel] ) ),
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "'," & IF ( ISBLANK ( _rev ), "null", FORMAT ( ROUND ( _rev * 100, 0 ), "0" ) )
+                & ","  & IF ( ISBLANK ( _gp ),  "null", FORMAT ( ROUND ( _gp * 100, 0 ),  "0" ) )
+                & ","  & IF ( ISBLANK ( _op ),  "null", FORMAT ( ROUND ( _op * 100, 0 ),  "0" ) )
+                & ","  & IF ( ISBLANK ( _bud ), "null", FORMAT ( ROUND ( _bud * 100, 0 ), "0" ) )
+                & "]",
+        ",", dim_date[YearMonthKey], ASC
+    )
+
+// ---------------------------------------------------------------------------
+// TOP PRODUCTS  [sku, name, category, rev, units, margin]
+// SUMMARIZE over the fact, so products that never sold never appear.
+// ---------------------------------------------------------------------------
+VAR _prodBase =
+    ADDCOLUMNS (
+        SUMMARIZE ( fact_sales, dim_product[ProductKey] ),
+        "@r", CALCULATE ( [Product Revenue] ),
+        "@u", CALCULATE ( [Product Units] ),
+        "@m", CALCULATE ( [Product Margin] )
+    )
+VAR _products =
+    CONCATENATEX (
+        TOPN ( 8, _prodBase, [@r], DESC, dim_product[ProductKey], ASC ),
+        "['" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_product[SKU] ) ),
+                BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+            & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_product[ProductName] ) ),
+                BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+            & "','" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                CALCULATE ( SELECTEDVALUE ( dim_product[Category] ) ),
+                BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+            & "'," & IF ( ISBLANK ( [@r] ), "null", FORMAT ( ROUND ( [@r] * 100, 0 ), "0" ) )
+            & ","  & IF ( ISBLANK ( [@u] ), "null", FORMAT ( ROUND ( [@u], 0 ),      "0" ) )
+            & ","  & IF ( ISBLANK ( [@m] ), "null", FORMAT ( ROUND ( [@m] * 100, 0 ), "0" ) )
+            & "]",
+        ",", [@r], DESC
+    )
+
+// ---------------------------------------------------------------------------
+// CATEGORY MIX  [name, rev, units, skus]
+// ---------------------------------------------------------------------------
+VAR _cats =
+    CONCATENATEX (
+        VALUES ( dim_product[Category] ),
+        VAR _r = CALCULATE ( [Product Revenue] )
+        VAR _u = CALCULATE ( [Product Units] )
+        VAR _s = CALCULATE ( DISTINCTCOUNT ( dim_product[ProductKey] ) )
+        RETURN
+            "['" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                    dim_product[Category],
+                    BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+                    "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+                & "'," & IF ( ISBLANK ( _r ), "null", FORMAT ( ROUND ( _r * 100, 0 ), "0" ) )
+                & ","  & IF ( ISBLANK ( _u ), "null", FORMAT ( ROUND ( _u, 0 ),       "0" ) )
+                & ","  & IF ( ISBLANK ( _s ), "null", FORMAT ( ROUND ( _s, 0 ),       "0" ) )
+                & "]",
+        ",", CALCULATE ( [Product Revenue] ), DESC
+    )
+
+// ---------------------------------------------------------------------------
+// HEADLINE KPIs
+// ---------------------------------------------------------------------------
+VAR _kRev    = [Total Revenue]
+VAR _kCogs   = [Total COGS]
+VAR _kGp     = [Gross Profit]
+VAR _kGm     = [Gross Margin %]
+VAR _kOpex   = [Total OpEx]
+VAR _kEbitda = [EBITDA]
+VAR _kEbBp   = [EBITDA %]
+VAR _kOp     = [Operating Profit]
+VAR _kOpBp   = [Operating Margin %]
+VAR _kVar    = [Variance]
+VAR _kVarBp  = [Variance %]
+VAR _kUnits  = [Product Units]
+VAR _kPRev   = [Product Revenue]
+
+VAR _kpi =
+    "{rev:"       & IF ( ISBLANK ( _kRev ),    "null", FORMAT ( ROUND ( _kRev * 100, 0 ),    "0" ) )
+    & ",cogs:"    & IF ( ISBLANK ( _kCogs ),   "null", FORMAT ( ROUND ( _kCogs * 100, 0 ),   "0" ) )
+    & ",gp:"      & IF ( ISBLANK ( _kGp ),     "null", FORMAT ( ROUND ( _kGp * 100, 0 ),     "0" ) )
+    & ",gmBp:"    & IF ( ISBLANK ( _kGm ),     "null", FORMAT ( ROUND ( _kGm * 10000, 0 ),   "0" ) )
+    & ",opex:"    & IF ( ISBLANK ( _kOpex ),   "null", FORMAT ( ROUND ( _kOpex * 100, 0 ),   "0" ) )
+    & ",ebitda:"  & IF ( ISBLANK ( _kEbitda ), "null", FORMAT ( ROUND ( _kEbitda * 100, 0 ), "0" ) )
+    & ",ebitdaBp:"& IF ( ISBLANK ( _kEbBp ),   "null", FORMAT ( ROUND ( _kEbBp * 10000, 0 ), "0" ) )
+    & ",op:"      & IF ( ISBLANK ( _kOp ),     "null", FORMAT ( ROUND ( _kOp * 100, 0 ),     "0" ) )
+    & ",opBp:"    & IF ( ISBLANK ( _kOpBp ),   "null", FORMAT ( ROUND ( _kOpBp * 10000, 0 ), "0" ) )
+    & ",varc:"    & IF ( ISBLANK ( _kVar ),    "null", FORMAT ( ROUND ( _kVar * 100, 0 ),    "0" ) )
+    & ",varBp:"   & IF ( ISBLANK ( _kVarBp ),  "null", FORMAT ( ROUND ( _kVarBp * 10000, 0 ),"0" ) )
+    & ",units:"   & IF ( ISBLANK ( _kUnits ),  "null", FORMAT ( ROUND ( _kUnits, 0 ),        "0" ) )
+    & ",prodRev:" & IF ( ISBLANK ( _kPRev ),   "null", FORMAT ( ROUND ( _kPRev * 100, 0 ),   "0" ) )
+    & ",nProducts:" & FORMAT ( _nProds, "0" )
+    & ",nStores:"   & FORMAT ( _nStores, "0" )
+    & ",nRegions:"  & FORMAT ( _nRegions, "0" )
+    & ",nMonths:"   & FORMAT ( _nMonths, "0" )
+    & "}"
+
+// ---------------------------------------------------------------------------
+// META
+// Only what is genuinely data. The title, the strapline and the colour ramp
+// live in the renderer, which is the whole argument of the technique: the
+// semantic model should not be where presentation goes to hide.
+// ---------------------------------------------------------------------------
+VAR _through =
+    SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+        COALESCE ( [Data Through Label], "" ),
+        BS, BS & BS ), Q, BS & Q ), UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ),
+        "<", BS & "u003C" ), LS, BS & "u2028" ), PS, BS & "u2029" )
+
+VAR _build = FORMAT ( COALESCE ( MAXX ( _monthKeys, dim_date[YearMonthKey] ), 0 ), "0" )
+
+VAR _meta =
+    "{dataThrough:'" & _through & "'"
+    & ",currency:'USD',locale:'en-US'"
+    & ",build:'" & _build & "'}"
+
+// ---------------------------------------------------------------------------
+VAR Payload =
+    "window.__tpHome={meta:" & _meta
+        & ",kpi:" & _kpi
+        & ",stores:[" & _stores & "]"
+        & ",regions:[" & _regions & "]"
+        & ",trend:[" & _trend & "]"
+        & ",products:[" & _products & "]"
+        & ",cats:[" & _cats & "]};"
+
+// A five second watchdog. If the CDN is blocked by a tenant firewall, a proxy,
+// or a deleted tag, this is the only code that will still be running, because
+// everything that could have reported the failure is in the file that never
+// arrived.
+// It builds its message with DOM calls rather than innerHTML, so this string
+// contains no "<" at all and cannot terminate the script block it lives in.
+// The escape chain protects values; this protects the code around them.
+VAR Watchdog =
+    "setTimeout(function(){if(window.TPH)return;"
+    & "var r=document.getElementById('tph-root');if(!r||r.firstChild)return;"
+    & "r.style.cssText='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;"
+    & "padding:34px;background:#04060c;height:100%';"
+    & "var h=document.createElement('b');h.style.color='#f87171';"
+    & "h.textContent='The renderer did not load.';"
+    & "var p=document.createElement('div');p.style.marginTop='8px';"
+    & "p.textContent='The measure produced its payload, so the model and the DAX are fine. "
+    & "cdn.statically.io could not be reached. Check the tenant firewall, any proxy, "
+    & "and that the pinned tag still exists.';"
+    & "r.appendChild(h);r.appendChild(p);},5000);"
+
+VAR Guard =
+    "<div style='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;padding:34px;"
+    & "background:#04060c;height:100%'><b style='color:#e6edf7'>No data in scope.</b><br>"
+    & "The current filters leave no closed months or no stores, so there is nothing to plot. "
+    & "Clear the filters to bring the network view back.</div>"
+
+RETURN
+    IF (
+        _nMonths = 0 || _nStores = 0,
+        Guard,
+        "<div id='tph-root'></div>"
+            & "<script>" & Payload
+            & "if(window.TPH&&window.TPH.render){window.TPH.render();}"
+            & Watchdog
+            & "</script>"
+            & "<script src='" & CdnUrl & "'></script>"
+    )
