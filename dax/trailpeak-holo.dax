@@ -1,0 +1,43 @@
+// ============================================================================
+// TrailPeak Outfitters - HOLO
+// The "almost 3D" landing page: the same store network, drawn as a tilted
+// ground plane with a light column standing over each store.
+// ----------------------------------------------------------------------------
+// Renderer : trailpeak/trailpeak-home.js, mode 'holo'
+// Serve    : https://cdn.statically.io/gh/sulaiman013/dax-with-js
+//              @trailpeak-home-v5.0.0/trailpeak/trailpeak-home.js
+//
+// WHY THIS MEASURE IS THREE LINES AND NOT THREE HUNDRED
+// ----------------------------------------------------------------------------
+// This page needs EXACTLY the payload [JS Home Page] already produces: the same
+// dimensions, the same store x month and product x store grain, the same
+// escaping and the same guards. The only difference is which layout the
+// renderer draws.
+//
+// Copying 300 lines of DAX to change one word would create two things that must
+// be kept in step by hand and silently would not be. So the payload has one
+// source of truth and this measure derives from it, injecting a single mode
+// flag. If the contract changes, both pages change together, by construction.
+//
+// The substitution is deliberately narrow:
+//
+//   "window.__tpHome={meta:"  ->  "window.__tpHome={mode:'holo',meta:"
+//
+// It matches once, at the head of the object literal, and it cannot match
+// inside any data value because a store name cannot contain that sequence: the
+// escape chain in [JS Home Page] turns every "<" into < and every quote
+// into an escaped quote before the value is ever concatenated.
+//
+// When [JS Home Page] returns its no-data guard instead of a payload, that
+// string contains no match and passes through untouched, so this page shows the
+// same guard rather than a broken payload.
+// ============================================================================
+
+JS Holo Page =
+VAR _base = [JS Home Page]
+RETURN
+    SUBSTITUTE (
+        _base,
+        "window.__tpHome={meta:",
+        "window.__tpHome={mode:'holo',meta:"
+    )

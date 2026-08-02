@@ -68,7 +68,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '4.0.0';
+  var VERSION = '5.0.0';
   var NS = 'tph';
 
   /* -------------------------------------------------------------------------
@@ -128,11 +128,36 @@
   /* The header leaves this gap. Native Power BI page-navigation buttons are
      positioned over it in the PBIR definition, because a custom visual has no
      handle on IVisualHost and cannot navigate pages itself. */
+  /* Column labels sit beside the cap, never centred: the beam runs straight
+     down through the middle. Side and nudge are tuned per store against the
+     projection, exactly as the bubble labels are. */
+  var HOLO_LABEL = {
+    DEN01: { a: 'start' }, BLD01: { a: 'end' },
+    SLC01: { a: 'end', dy: -13 }, BOI01: { a: 'end', dy: -15 },
+    SEA01: { a: 'end' }, PDX01: { a: 'end' }, SAC01: { a: 'end' },
+    AUS01: { a: 'start' }, PHX01: { a: 'end' }, ABQ01: { a: 'end' },
+    CHI01: { a: 'start' }, MSP01: { a: 'end', dy: -13 }
+  };
+
   var NAV_SLOT_W = 560;
 
   /* The baked projection fills its 1000x620 box edge to edge, but the store
      labels sit OUTSIDE the bubbles and Sacramento's runs off the left. Pad the
      viewBox rather than re-projecting: same geometry, more room around it. */
+  /* The holo plane fakes a tilt by squashing the projection vertically and
+     standing unsquashed columns on it. SQUASH is the vertical compression;
+     PLANE_CY is the fixed point it compresses toward, which must be the centre
+     of the fitExtent band the geometry was baked into (26..590). */
+  var SQUASH = 0.52;
+  var PLANE_CY = 308;
+  /* Squashing about the geometric centre leaves the plane floating in the
+     middle of the frame with dead space above it and the columns running out
+     of room. Drop the whole scene so the ground sits at roughly the lower
+     third and the columns rise into the empty upper two thirds. */
+  var PLANE_DY = 96;
+  var COL_MAX = 132;
+  function squashY(y) { return PLANE_CY * (1 - SQUASH) + y * SQUASH + PLANE_DY; }
+
   var MAP_PAD = 76;
   var MAP_VIEWBOX = (function () {
     var v = US_VIEWBOX.split(' ');
@@ -210,6 +235,11 @@
     '.tph-mapw{flex:1 1 auto;min-height:0;position:relative}',
     '.tph-mapw svg{position:absolute;inset:0;width:100%;height:100%;display:block}',
     '.tph-node{cursor:pointer;transition:opacity .18s ease}',
+    '.tph-node .ring,.tph-node .cap,.tph-node .capGlow{transition:rx .3s ease,ry .3s ease,r .25s ease,'
+    + 'stroke-opacity .2s ease}',
+    '.tph-node .core{transition:opacity .2s ease}',
+    '.tph-plane{transition:transform .5s cubic-bezier(.2,.8,.3,1)}',
+    '.tph-holow{perspective:1200px}',
     '.tph-legend{flex:0 0 auto;display:flex;align-items:center;gap:22px;padding:0 18px 14px;',
     '  font-family:' + MONO + ';font-size:9.5px;letter-spacing:.12em;color:' + FAINT + '}',
     '.tph-legend span{display:flex;align-items:center;gap:7px}',
@@ -380,6 +410,10 @@
     d.stores.forEach(function (s) { if (seen.indexOf(s.region) < 0) seen.push(s.region); });
     d.regions = PREF.filter(function (r) { return seen.indexOf(r) >= 0; })
       .concat(seen.filter(function (r) { return PREF.indexOf(r) < 0; }).sort());
+    /* One renderer, two presentations. The measure injects mode:'holo' for the
+       tilted-plane page. Sharing the file means the filter engine, the palette
+       and the league table cannot drift between the two pages. */
+    d.mode = (raw.mode === 'holo') ? 'holo' : 'map';
     return d;
   }
 
@@ -661,6 +695,146 @@
     return panel;
   }
 
+  /* -------------------------------------------------------------------------
+   * 11b. HOLO PLANE  ("almost 3D")
+   *
+   * The trick is cheaper than it looks and needs no WebGL. The projection is
+   * the ordinary one; the whole land group is then compressed vertically about
+   * a fixed centre, which reads as a tilted ground plane. Columns are drawn in
+   * UNSQUASHED space standing on the squashed base point, so they stay upright
+   * while the ground recedes. Draw order is back to front by base y, which is
+   * the painter's algorithm and the only depth sorting a 2.5D scene needs.
+   * ---------------------------------------------------------------------- */
+  function buildHolo(d, tots) {
+    var panel = el('div', NS + '-card');
+    var head = el('div', NS + '-maph');
+    var t = el('div', NS + '-mapt');
+    var scope = scopeStores();
+    t.appendChild(el('b', null, 'STORE NETWORK'));
+    t.appendChild(el('span', null, 'column height = ' +
+      (S.metric === 'op' ? 'op profit' : S.metric === 'gm' ? 'margin' : 'revenue') +
+      ' \u00b7 ' + scope.length + ' stores \u00b7 ' + d.regions.length + ' regions'));
+    head.appendChild(t);
+
+    var chips = el('div', NS + '-chips');
+    var all = el('button', NS + '-chip' + (S.regions.length ? '' : ' on'), 'ALL');
+    all.type = 'button'; all.setAttribute('data-region', '*');
+    chips.appendChild(all);
+    d.regions.forEach(function (r) {
+      var b = el('button', NS + '-chip' + (S.regions.indexOf(r) >= 0 ? ' on' : ''), esc(r.toUpperCase()));
+      b.type = 'button';
+      b.setAttribute('data-region', r);
+      b.setAttribute('aria-pressed', S.regions.indexOf(r) >= 0 ? 'true' : 'false');
+      chips.appendChild(b);
+    });
+    head.appendChild(chips);
+    panel.appendChild(head);
+
+    var wrap = el('div', NS + '-mapw ' + NS + '-holow');
+    var u = ++uid;
+    var gUp = NS + 'hu' + u, gDn = NS + 'hd' + u, rUp = NS + 'hug' + u, rDn = NS + 'hdg' + u,
+        sh = NS + 'hs' + u, sf = NS + 'hf' + u, cl = NS + 'hc' + u;
+
+    var mx = 1;
+    scope.forEach(function (q) { mx = Math.max(mx, mval(tots[q.k] || {}, S.metric)); });
+    var focus = S.hover || S.store;
+
+    /* Back to front. A column nearer the viewer has a larger base y and must
+       paint over the ones behind it. */
+    var order = d.stores.filter(function (q) { return q.x != null; })
+      .map(function (q) { return { s: q, bx: q.x, by: squashY(q.y) }; })
+      .sort(function (a, b) { return a.by - b.by; });
+
+    var cols = '';
+    order.forEach(function (n, i) {
+      var s = n.s, o = tots[s.k] || { rev: 0, op: 0, bo: 0 };
+      var sc = inScope(s);
+      var ahead = (o.op - o.bo) >= 0;
+      var col = ahead ? GRN_HI : BAD;
+      var h = sc ? Math.max(20, Math.sqrt(mval(o, S.metric) / mx) * COL_MAX) : 14;
+      var w = s.tier === 'Flagship' ? 9 : s.tier === 'Standard' ? 7 : 5.5;
+      var isF = focus === s.k;
+      var dim = !sc || (focus != null && !isF);
+      var top = n.by - h;
+      var hl = HOLO_LABEL[s.code] || {};
+      var la = hl.a || 'start';
+      var lx = n.bx + (la === 'end' ? -12 : 12);
+      var ldy = hl.dy || 0;
+      var ramp = ahead ? gUp : gDn, halo = ahead ? rUp : rDn;
+
+      cols +=
+        '<g class="' + NS + '-node" data-store="' + s.k + '" opacity="' + (dim ? 0.20 : 1) +
+        '" tabindex="0" role="button" aria-label="' + esc(s.name + ', ' + money(o.rev)) +
+        '" style="animation:tphFade .55s ease both;animation-delay:' + (0.05 * i + 0.15).toFixed(2) + 's">' +
+        '<ellipse cx="' + n.bx.toFixed(1) + '" cy="' + n.by.toFixed(1) + '" rx="' + (w * 2.6).toFixed(1) +
+        '" ry="' + (w * 2.3 * SQUASH).toFixed(1) + '" fill="url(#' + halo + ')"></ellipse>' +
+        '<ellipse class="ring" cx="' + n.bx.toFixed(1) + '" cy="' + n.by.toFixed(1) + '" rx="' +
+        (isF ? w * 3.2 : w * 1.5).toFixed(1) + '" ry="' + ((isF ? w * 2.68 : w * 1.24) * SQUASH).toFixed(1) +
+        '" fill="none" stroke="' + col + '" stroke-opacity="' + (isF ? 1 : 0.7) + '" stroke-width="1"></ellipse>' +
+        '<rect class="beam" x="' + (n.bx - w / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + w +
+        '" height="' + h.toFixed(1) + '" rx="' + (w / 2).toFixed(1) + '" fill="url(#' + ramp + ')"></rect>' +
+        '<rect class="core" x="' + (n.bx - 0.7).toFixed(1) + '" y="' + top.toFixed(1) +
+        '" width="1.4" height="' + h.toFixed(1) + '" fill="#ffffff" opacity="' + (isF ? 0.95 : 0.45) + '"></rect>' +
+        '<circle class="capGlow" cx="' + n.bx.toFixed(1) + '" cy="' + top.toFixed(1) + '" r="' +
+        (isF ? w * 4 : w * 2.4).toFixed(1) + '" fill="url(#' + halo + ')"></circle>' +
+        '<circle class="cap" cx="' + n.bx.toFixed(1) + '" cy="' + top.toFixed(1) + '" r="' +
+        (isF ? w * 0.95 : w * 0.62).toFixed(1) + '" fill="#ffffff" stroke="' + col + '" stroke-width="1.4"></circle>' +
+        '<text class="lbl" x="' + lx.toFixed(1) + '" y="' + (top + 4 + ldy).toFixed(1) + '" text-anchor="' + la +
+        '" font-family="' + MONO.replace(/"/g, "'") + '" font-size="10" letter-spacing=".08em" fill="' +
+        (isF ? INK : MUTE) + '">' + esc(s.city.toUpperCase()) + '</text>' +
+        '<text class="val" x="' + lx.toFixed(1) + '" y="' + (top + 17 + ldy).toFixed(1) + '" text-anchor="' + la +
+        '" font-family="' + MONO.replace(/"/g, "'") + '" font-size="11" fill="' + col +
+        '" opacity="' + (isF ? 1 : 0) + '">' + esc(money(o.rev)) + '</text>' +
+        '<rect x="' + (n.bx - 16).toFixed(1) + '" y="' + (top - 14).toFixed(1) +
+        '" width="32" height="' + (h + 26).toFixed(1) + '" fill="transparent"></rect>' +
+        '</g>';
+    });
+
+    function rampDef(id, c) {
+      return '<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="0" y1="620" x2="0" y2="0">' +
+        '<stop offset="0%" stop-color="' + c + '" stop-opacity=".05"></stop>' +
+        '<stop offset="55%" stop-color="' + c + '" stop-opacity=".55"></stop>' +
+        '<stop offset="100%" stop-color="#ffffff" stop-opacity=".95"></stop></linearGradient>';
+    }
+    function glowDef(id, c) {
+      return '<radialGradient id="' + id + '">' +
+        '<stop offset="0%" stop-color="' + c + '" stop-opacity=".50"></stop>' +
+        '<stop offset="100%" stop-color="' + c + '" stop-opacity="0"></stop></radialGradient>';
+    }
+
+    wrap.innerHTML =
+      '<svg viewBox="' + MAP_VIEWBOX + '" preserveAspectRatio="xMidYMid meet" role="img" ' +
+      'aria-label="Tilted map of the United States with a light column over each store, height by the selected measure">' +
+      '<defs>' + rampDef(gUp, GRN_HI) + rampDef(gDn, BAD) + glowDef(rUp, GRN_HI) + glowDef(rDn, BAD) +
+      '<linearGradient id="' + sh + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="rgba(79,211,154,.16)"></stop>' +
+      '<stop offset="100%" stop-color="rgba(46,165,106,.04)"></stop></linearGradient>' +
+      '<filter id="' + sf + '" x="-70%" y="-70%" width="240%" height="240%">' +
+      '<feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>' +
+      '<clipPath id="' + cl + '"><path d="' + US_LAND + '"></path></clipPath></defs>' +
+      '<g class="' + NS + '-plane">' +
+      '<g transform="translate(0,' + (PLANE_CY * (1 - SQUASH) + PLANE_DY).toFixed(2) + ') scale(1,' + SQUASH + ')">' +
+      '<path d="' + US_LAND + '" fill="url(#' + sh + ')" filter="url(#' + sf + ')" opacity=".85"></path>' +
+      '<path d="' + US_LAND + '" fill="rgba(10,26,20,.72)" stroke="rgba(120,220,170,.50)" ' +
+      'stroke-width="1.2" stroke-linejoin="round"></path>' +
+      '<path d="' + US_GRAT + '" fill="none" stroke="rgba(110,220,170,.14)" stroke-width="0.6" ' +
+      'clip-path="url(#' + cl + ')"></path>' +
+      '</g>' + cols + '</g></svg>';
+
+    var tip = el('div', NS + '-tip');
+    wrap.appendChild(tip);
+    V.tip = tip; V.mapw = wrap; V.holo = true;
+    panel.appendChild(wrap);
+
+    var lg = el('div', NS + '-legend');
+    lg.innerHTML =
+      '<span><i style="background:rgba(79,211,154,.45);border:1px solid ' + GRN_HI + '"></i>AHEAD OF BUDGET</span>' +
+      '<span><i style="background:rgba(224,85,97,.45);border:1px solid ' + BAD + '"></i>BEHIND BUDGET</span>' +
+      '<span class="r">CLICK A COLUMN TO DRILL IN</span>';
+    panel.appendChild(lg);
+    return panel;
+  }
+
   function paintTip(tots) {
     if (!V.tip || !D || !V.mapw) return;
     var focus = S.hover || S.store, s = D.storeBy[focus];
@@ -674,8 +848,17 @@
     var ox = (r.width - vw * k) / 2 - (+vb[0]) * k, oy = (r.height - vh * k) / 2 - (+vb[1]) * k;
     var mx = 1;
     scopeStores().forEach(function (q) { mx = Math.max(mx, mval((tots || {})[q.k] || {}, S.metric)); });
-    var rad = Math.max(6, Math.sqrt(mval(o, S.metric) / mx) * 34);
     var vr = (o.op || 0) - (o.bo || 0);
+
+    /* Anchor differs by presentation: the bubble map hangs the tip off the top
+       of the disc, the holo plane off the cap of the column, which is the
+       squashed base minus the column height. */
+    var ax = s.x, ay;
+    if (V.holo) {
+      ay = squashY(s.y) - Math.max(20, Math.sqrt(mval(o, S.metric) / mx) * COL_MAX) - 14;
+    } else {
+      ay = s.y - Math.max(6, Math.sqrt(mval(o, S.metric) / mx) * 34);
+    }
 
     V.tip.innerHTML =
       '<div class="' + NS + '-tipn">' + esc(s.name) + '</div>' +
@@ -685,8 +868,8 @@
       '<span>Op profit</span><span>' + esc(money(o.op)) + '</span>' +
       '<span>vs budget</span><span style="color:' + (vr >= 0 ? GRN_HI : BAD) + '">' +
       (vr >= 0 ? '▲ ' : '▼ ') + esc(money(Math.abs(vr))) + '</span></div>';
-    V.tip.style.left = (ox + s.x * k) + 'px';
-    V.tip.style.top = (oy + (s.y - rad) * k - 6) + 'px';
+    V.tip.style.left = (ox + ax * k) + 'px';
+    V.tip.style.top = (oy + ay * k - 6) + 'px';
     V.tip.classList.add('on');
   }
 
@@ -955,7 +1138,7 @@
     stage.appendChild(buildTop(D));
     var main = el('div', NS + '-main');
     main.appendChild(buildKpis(D, agg));
-    main.appendChild(buildMap(D, tots));
+    main.appendChild(D.mode === 'holo' ? buildHolo(D, tots) : buildMap(D, tots));
     main.appendChild(buildBoard(D, tots));
     stage.appendChild(main);
     stage.appendChild(buildTrend(D, agg));
@@ -1025,6 +1208,20 @@
       repaintFocus();
     });
 
+    /* A small parallax on the holo plane. Purely decorative, so it is skipped
+       entirely when the viewer has asked for reduced motion. */
+    root.addEventListener('mousemove', function (e) {
+      if (!V.holo || !V.mapw) return;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var plane = V.mapw.querySelector('.' + NS + '-plane');
+      if (!plane) return;
+      var r = V.mapw.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      var dx = (e.clientX - r.left - r.width / 2) / r.width;
+      var dy = (e.clientY - r.top - r.height / 2) / r.height;
+      plane.setAttribute('transform', 'translate(' + (-dx * 16).toFixed(1) + ',' + (-dy * 9).toFixed(1) + ')');
+    });
+
     root.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         var t = closest(e.target, '[data-store]');
@@ -1057,14 +1254,32 @@
       if (!s) continue;
       var sc = inScope(s), isF = focus === k;
       var o = tots[k] || {};
-      var rad = sc ? Math.max(6, Math.sqrt(mval(o, S.metric) / mx) * 34) : 5;
-      g.setAttribute('opacity', (!sc || (focus != null && !isF)) ? 0.22 : 1);
-      var halo = g.querySelector('.halo'), disc = g.querySelector('.disc'), val = g.querySelector('.val');
-      if (halo) { halo.setAttribute('r', (isF ? rad + 12 : rad).toFixed(1)); halo.setAttribute('opacity', isF ? 0.9 : 0); }
-      if (disc) disc.setAttribute('fill-opacity', isF ? 0.5 : (s.tier === 'Flagship' ? 0.26 : 0.16));
+      g.setAttribute('opacity', (!sc || (focus != null && !isF)) ? (V.holo ? 0.20 : 0.22) : 1);
+      var val = g.querySelector('.val');
       if (val) val.setAttribute('opacity', isF ? 1 : 0);
       var lbl = g.querySelectorAll('text')[0];
       if (lbl) lbl.setAttribute('fill', isF ? INK : MUTE);
+
+      if (V.holo) {
+        /* The column geometry is fixed; only the emphasis rings and the cap
+           resize on hover, so there is no need to recompute the height. */
+        var w = s.tier === 'Flagship' ? 9 : s.tier === 'Standard' ? 7 : 5.5;
+        var ring = g.querySelector('.ring'), cap = g.querySelector('.cap'),
+            cg = g.querySelector('.capGlow'), core = g.querySelector('.core');
+        if (ring) {
+          ring.setAttribute('rx', (isF ? w * 3.2 : w * 1.5).toFixed(1));
+          ring.setAttribute('ry', ((isF ? w * 2.68 : w * 1.24) * SQUASH).toFixed(1));
+          ring.setAttribute('stroke-opacity', isF ? 1 : 0.7);
+        }
+        if (cap) cap.setAttribute('r', (isF ? w * 0.95 : w * 0.62).toFixed(1));
+        if (cg) cg.setAttribute('r', (isF ? w * 4 : w * 2.4).toFixed(1));
+        if (core) core.setAttribute('opacity', isF ? 0.95 : 0.45);
+      } else {
+        var rad = sc ? Math.max(6, Math.sqrt(mval(o, S.metric) / mx) * 34) : 5;
+        var halo = g.querySelector('.halo'), disc = g.querySelector('.disc');
+        if (halo) { halo.setAttribute('r', (isF ? rad + 12 : rad).toFixed(1)); halo.setAttribute('opacity', isF ? 0.9 : 0); }
+        if (disc) disc.setAttribute('fill-opacity', isF ? 0.5 : (s.tier === 'Flagship' ? 0.26 : 0.16));
+      }
     }
     var rows = V.root.querySelectorAll('.' + NS + '-row[data-store]');
     for (var j = 0; j < rows.length; j++) {

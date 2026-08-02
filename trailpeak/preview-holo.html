@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TrailPeak - home page harness</title>
+<style>
+ *{box-sizing:border-box} body{margin:0;height:100vh;display:flex;flex-direction:column;
+   font:12.5px/1.5 "Segoe UI",system-ui,sans-serif;background:#0f172a;color:#e2e8f0}
+ body>header{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:7px 12px;
+   background:#1e293b;border-bottom:1px solid #334155;flex-wrap:wrap}
+ body>header>h1{font-size:12px;margin:0 8px 0 0}
+ button{font:inherit;padding:4px 9px;border-radius:6px;border:1px solid #475569;
+   background:#334155;color:#e2e8f0;cursor:pointer}
+ button.p{background:#2d6a4f;border-color:#2d6a4f;color:#fff;font-weight:600}
+ #stage{flex:1 1 auto;min-height:0;position:relative;background:#04060c}
+ #host{position:absolute;inset:0;overflow:hidden}
+ #log{flex:0 0 auto;max-height:112px;overflow:auto;padding:5px 12px;background:#020617;
+   font:11px/1.55 Consolas,monospace;color:#94a3b8;border-top:1px solid #1e293b}
+ #log .e{color:#f87171} #log .o{color:#4ade80} #log .w{color:#fbbf24}
+ #sz{font:11px/1 Consolas,monospace;color:#94a3b8}
+</style></head><body>
+<header>
+  <h1>TrailPeak home harness</h1>
+  <button class="p" id="xf">Simulate cross-filter</button>
+  <button id="x10">Cross-filter x20</button>
+  <button id="rm">Remount</button>
+  <button id="empty">Empty payload</button>
+  <span id="sz"></span>
+</header>
+<div id="stage"><div id="host"></div></div>
+<div id="log"></div>
+
+<script>
+/* ---------------------------------------------------------------------------
+ * Instrument getContext BEFORE anything can call it. The single most important
+ * invariant for this visual is that re-injection does NOT create a second
+ * WebGL context. Browsers cap live contexts at roughly 16 and then start
+ * killing the oldest, so a leak here shows up as "the globe goes black after
+ * a while", which is almost impossible to diagnose in Power BI.
+ * ------------------------------------------------------------------------ */
+var GL_CONTEXTS = 0;
+var _getContext = HTMLCanvasElement.prototype.getContext;
+HTMLCanvasElement.prototype.getContext = function (type) {
+  var ctx = _getContext.apply(this, arguments);
+  if (ctx && /webgl/.test(type)) {
+    if (!this.__counted) { this.__counted = true; GL_CONTEXTS++; }
+  }
+  return ctx;
+};
+
+/* Count live rAF loops the same way. */
+var RAF_ACTIVE = 0;
+var _raf = window.requestAnimationFrame, _caf = window.cancelAnimationFrame;
+window.requestAnimationFrame = function (fn) { RAF_ACTIVE++; return _raf(function (t) { RAF_ACTIVE--; fn(t); }); };
+</script>
+
+<script src="holo-fixture.js"></script>
+<script>
+var CLOSE = '<' + '/script>', BS = String.fromCharCode(92);
+var logEl = document.getElementById('log');
+function log(m, c) {
+  var d = document.createElement('div');
+  if (c) d.className = c;
+  d.textContent = new Date().toISOString().slice(11, 23) + '  ' + m;
+  logEl.appendChild(d); logEl.scrollTop = 1e9;
+}
+
+var useEmpty = false;
+
+/* Reproduce exactly what the DAX measure emits: the payload as a single-quoted
+   JS object literal, then the nudge, then the external script tag. */
+function emit() {
+  var data = useEmpty
+    ? { meta: window.TP_HOME_FIXTURE.meta, kpi: window.TP_HOME_FIXTURE.kpi,
+        stores: [], regions: [], trend: [], products: [], cats: [] }
+    : window.TP_HOME_FIXTURE;
+  var json = JSON.stringify(data).replace(/</g, BS + 'u003C');
+  document.getElementById('sz').textContent =
+    ' payload ' + json.length.toLocaleString() + ' chars (' +
+    (json.length / 2100000 * 100).toFixed(3) + '% of the 2.1M cap)';
+  return "<div id='tph-root'></div><script>window.__tpHome=" + json +
+    ";if(window.TPH&&window.TPH.render){window.TPH.render();}" + CLOSE +
+    "<script src='trailpeak-home.js'>" + CLOSE;
+}
+
+/* innerHTML does NOT execute <script> tags, so the host has to re-create the
+   script elements. The real visual does exactly this, which is why the
+   renderer has to be idempotent. */
+function inject(host, html) {
+  host.innerHTML = html;
+  var s = host.querySelectorAll('script');
+  for (var i = 0; i < s.length; i++) {
+    var o = s[i], f = document.createElement('script');
+    for (var a = 0; a < o.attributes.length; a++) f.setAttribute(o.attributes[a].name, o.attributes[a].value);
+    if (!o.src) f.appendChild(document.createTextNode(o.textContent));
+    else {
+      f.onload = function () { log('external script executed'); check(); };
+      f.onerror = function () { log('external script FAILED to load', 'e'); };
+    }
+    o.parentNode.replaceChild(f, o);
+  }
+}
+
+function mount() {
+  document.getElementById('stage').innerHTML = '<div id="host"></div>';
+  inject(document.getElementById('host'), emit());
+  log('mounted');
+}
+
+/* The assertion that is worth more than the rest of the harness combined. */
+function check() {
+  setTimeout(function () {
+    var roots = document.querySelectorAll('#tph-root').length;
+    var css = document.querySelectorAll('#tph-css').length;
+    var canv = document.querySelectorAll('canvas').length;
+    var shell = document.querySelectorAll('.tph-stage').length;
+    var panels = document.querySelectorAll('.tph-card').length;
+    
+    var ok = roots === 1 && css === 1 && shell === 1 && panels >= 2 && GL_CONTEXTS === 0;
+    log('roots=' + roots + '  styles=' + css + '  canvases=' + canv +
+        '  stages=' + shell + '  panels=' + panels +
+        '  webglContexts=' + GL_CONTEXTS + '  ' + (ok ? 'PASS' : 'FAIL'), ok ? 'o' : 'e');
+    if (GL_CONTEXTS > 0) log('Unexpected WebGL context in a DOM/SVG build.', 'e');
+    window.__HARNESS = { roots: roots, css: css, canv: canv, ctx: GL_CONTEXTS, panels: panels, ok: ok };
+  }, 90);
+}
+
+document.getElementById('xf').onclick = function () {
+  log('--- simulate cross-filter ---', 'w');
+  inject(document.getElementById('host'), emit());
+};
+document.getElementById('x10').onclick = function () {
+  log('--- 20 rapid cross-filters ---', 'w');
+  for (var i = 0; i < 20; i++) inject(document.getElementById('host'), emit());
+};
+document.getElementById('rm').onclick = function () { log('--- remount ---', 'w'); mount(); };
+document.getElementById('empty').onclick = function () {
+  useEmpty = !useEmpty;
+  log('--- empty payload: ' + useEmpty + ' ---', 'w');
+  inject(document.getElementById('host'), emit());
+};
+
+window.addEventListener('error', function (e) { log('ERROR: ' + e.message, 'e'); });
+mount();
+</script>
+</body></html>
