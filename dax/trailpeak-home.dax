@@ -286,21 +286,46 @@ VAR Payload =
 // or a deleted tag, this is the only code that will still be running, because
 // everything that could have reported the failure is in the file that never
 // arrived.
-// It builds its message with DOM calls rather than innerHTML, so this string
+// A loader, not just a watchdog.
+//
+// The static script tag below is the documented pattern and it is what runs in
+// the normal case. But a static tag gives you no error event you can act on, so
+// if it has not installed the renderer after a grace period this retries from a
+// SECOND CDN. That distinction is the whole point: if statically.io is blocked
+// by a tenant firewall and jsDelivr is not, the page simply works instead of
+// showing a dead end, and if both fail the message says so, which tells you the
+// problem is egress and not the tag.
+//
+// Everything here is built with DOM calls rather than innerHTML, so this string
 // contains no "<" at all and cannot terminate the script block it lives in.
 // The escape chain protects values; this protects the code around them.
+VAR AltUrl =
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js"
+
 VAR Watchdog =
-    "setTimeout(function(){if(window.TPH)return;"
-    & "var r=document.getElementById('tph-root');if(!r||r.firstChild)return;"
+    "(function(){"
+    & "function say(t,d){var r=document.getElementById('tph-root');if(!r)return;"
     & "r.style.cssText='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;"
-    & "padding:34px;background:#04060c;height:100%';"
-    & "var h=document.createElement('b');h.style.color='#f87171';"
-    & "h.textContent='The renderer did not load.';"
-    & "var p=document.createElement('div');p.style.marginTop='8px';"
-    & "p.textContent='The measure produced its payload, so the model and the DAX are fine. "
-    & "cdn.statically.io could not be reached. Check the tenant firewall, any proxy, "
-    & "and that the pinned tag still exists.';"
-    & "r.appendChild(h);r.appendChild(p);},5000);"
+    & "padding:34px;background:#04060c;height:100%';r.textContent='';"
+    & "var h=document.createElement('b');h.style.color='#f87171';h.textContent=t;"
+    & "var p=document.createElement('div');p.style.marginTop='8px';p.textContent=d;"
+    & "r.appendChild(h);r.appendChild(p);}"
+    & "function grab(u,ok,bad){var s=document.createElement('script');s.src=u;s.async=false;"
+    & "s.onload=ok;s.onerror=bad;(document.head||document.documentElement).appendChild(s);}"
+    & "setTimeout(function(){"
+    & "if(window.TPH){if(window.TPH.render)window.TPH.render();return;}"
+    & "grab('" & AltUrl & "',function(){setTimeout(function(){"
+    & "if(window.TPH){if(window.TPH.render)window.TPH.render();return;}"
+    & "say('The renderer loaded but did not install.',"
+    & "'A CDN returned the file and it executed, but window.TPH was never set. "
+    & "That points at a script error inside the renderer rather than at the network.');"
+    & "},1500);},function(){"
+    & "say('The renderer could not be fetched.',"
+    & "'The measure produced its payload, so the model and the DAX are fine. Neither "
+    & "cdn.statically.io nor cdn.jsdelivr.net could be reached from this machine. That is "
+    & "egress, not the tag: check the tenant firewall and any corporate proxy. Also confirm "
+    & "you installed HTML Content (standard), not HTML Content (lite), which strips scripts.');"
+    & "});},7000);})();"
 
 VAR Guard =
     "<div style='font:14px/1.7 Segoe UI,Arial,sans-serif;color:#8ea4c2;padding:34px;"
