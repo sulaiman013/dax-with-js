@@ -39,8 +39,9 @@ const args = [
   '--window-size=1600,900',
   '--no-first-run', '--no-default-browser-check', '--disable-extensions',
   '--allow-file-access-from-files',
-  /* SwiftShader gives a real WebGL2 implementation with no GPU present. */
-  '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
+  /* No SwiftShader. Forcing software rasterisation was needed by the old WebGL
+     build; this one is DOM and SVG, and software compositing introduces tile
+     seams in wide low-contrast fills that do not exist under normal rendering. */
   '--disable-gpu-sandbox',
   PAGE
 ];
@@ -128,16 +129,16 @@ async function waitForTarget(timeoutMs) {
     console.log('boot                 :', JSON.stringify(st));
     if (st.fail) throw new Error('renderer painted its failure state');
     if (!st.installed) throw new Error('window.TPH was never installed');
-    if (st.kpis !== 6) throw new Error('expected 6 KPI cards, got ' + st.kpis);
+    if (st.kpis !== 4) throw new Error('expected 4 KPI cards, got ' + st.kpis);
     if (st.nodes !== 12) throw new Error('expected 12 map bubbles, got ' + st.nodes);
     if (st.rows !== 12) throw new Error('expected 12 store rows, got ' + st.rows);
-    if (st.netRev !== '$112,336,020') throw new Error('unfiltered net revenue wrong: ' + st.netRev);
+    if (st.netRev !== '$112.34M') throw new Error('unfiltered revenue wrong: ' + st.netRev);
 
     /* --- THE POINT OF v3: does a region chip actually re-aggregate? ------- */
     const clickChip = async (label) => {
       await evalJs(`(function(){
         var b=[].slice.call(document.querySelectorAll('[data-region]'))
-                .filter(function(x){return x.textContent.trim()==='${label}';})[0];
+                .filter(function(x){return x.textContent.trim()==='${label}'.toUpperCase();})[0];
         if(b) b.click();
       })()`);
       await sleep(320);
@@ -153,13 +154,13 @@ async function waitForTarget(timeoutMs) {
 
     const mtn = await clickChip('Mountain');
     console.log('region=Mountain      :', JSON.stringify(mtn));
-    if (mtn.netRev !== '$37,154,047') throw new Error('Mountain revenue wrong: ' + mtn.netRev + ' (expected $37,154,047)');
+    if (mtn.netRev !== '$37.15M') throw new Error('Mountain revenue wrong: ' + mtn.netRev + ' (expected $37.15M)');
     if (mtn.rows !== 4) throw new Error('Mountain should leave 4 stores, got ' + mtn.rows);
     if (mtn.vital === st.vital) console.log('  note: vital-few unchanged under filter (may be legitimate)');
 
     const both = await clickChip('Pacific');
     console.log('region=Mtn+Pacific   :', JSON.stringify(both));
-    if (both.netRev !== '$66,659,722') throw new Error('Mountain+Pacific wrong: ' + both.netRev + ' (expected $66,659,722)');
+    if (both.netRev !== '$66.66M') throw new Error('Mountain+Pacific wrong: ' + both.netRev + ' (expected $66.66M)');
     if (both.rows !== 7) throw new Error('Mountain+Pacific should leave 7 stores, got ' + both.rows);
 
     /* store cross-filter narrows the KPI strip but keeps the league table */
@@ -184,11 +185,14 @@ async function waitForTarget(timeoutMs) {
     console.log('products mode rows   :', prod);
     if (!prod) throw new Error('products league table is empty');
 
-    await evalJs(`(function(){var b=document.querySelector('[data-reset]');if(b)b.click();})()`);
+    await evalJs(`(function(){var b=document.querySelector('[data-mode="stores"]');if(b)b.click();
+        var a=[].slice.call(document.querySelectorAll('[data-region]'))
+                .filter(function(x){return x.getAttribute('data-region')==='*';})[0];
+        if(a)a.click();})()`);
     await sleep(320);
     const back = await evalJs(`(function(){var e=document.querySelector('.tph-kpi:nth-child(1) .tph-kv');return e?e.textContent.trim():'';})()`);
-    console.log('after reset          :', back);
-    if (back !== '$112,336,020') throw new Error('reset did not restore the unfiltered total: ' + back);
+    console.log('after ALL chip       :', back);
+    if (back !== '$112.34M') throw new Error('ALL chip did not restore the unfiltered total: ' + back);
 
     /* --- 3. did it actually draw pixels? ---------------------------------
      * readPixels cannot be trusted here: the context is created without
@@ -259,7 +263,7 @@ async function waitForTarget(timeoutMs) {
     await evalJs(`document.querySelector('header').style.display='none';
                   document.getElementById('log').style.display='none';
                   document.getElementById('stage').style.cssText='position:absolute;inset:0;height:100vh'`);
-    await sleep(1200);
+    await sleep(2600);
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     if (shot.result && shot.result.data) {
       const out = path.resolve(__dirname, 'home-smoke.png');

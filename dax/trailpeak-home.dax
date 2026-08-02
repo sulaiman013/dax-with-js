@@ -6,7 +6,7 @@
 //            is baked into the file, so runtime needs no d3, no topojson, no
 //            atlas fetch and no webfont request)
 // Serve    : https://cdn.statically.io/gh/sulaiman013/dax-with-js
-//              @trailpeak-home-v3.0.0/trailpeak/trailpeak-home.js
+//              @trailpeak-home-v4.0.0/trailpeak/trailpeak-home.js
 //
 // WHY THIS SHIPS GRAIN AND NOT TOTALS
 // ----------------------------------------------------------------------------
@@ -57,9 +57,9 @@
 
 JS Home Page =
 VAR CdnUrl =
-    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-home-v3.0.0/trailpeak/trailpeak-home.js"
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-home-v4.0.0/trailpeak/trailpeak-home.js"
 VAR AltUrl =
-    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-home-v3.0.0/trailpeak/trailpeak-home.js"
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-home-v4.0.0/trailpeak/trailpeak-home.js"
 
 // A backslash, built from its code point. A bare "\" in DAX is legal but reads
 // like a typo and does not survive copy-paste through JSON-based tooling.
