@@ -109,14 +109,15 @@ function check() {
   setTimeout(function () {
     var roots = document.querySelectorAll('#tph-root').length;
     var css = document.querySelectorAll('#tph-css').length;
-    var canv = document.querySelectorAll('canvas.tph-gl').length;
+    var canv = document.querySelectorAll('canvas').length;
     var shell = document.querySelectorAll('.tph-stage').length;
-    var panels = document.querySelectorAll('.tph-p').length;
-    var ok = roots === 1 && css === 1 && canv === 1 && GL_CONTEXTS === 1 && shell <= 1;
+    var panels = document.querySelectorAll('.tph-card').length;
+    
+    var ok = roots === 1 && css === 1 && shell === 1 && panels >= 2 && GL_CONTEXTS === 0;
     log('roots=' + roots + '  styles=' + css + '  canvases=' + canv +
         '  stages=' + shell + '  panels=' + panels +
         '  webglContexts=' + GL_CONTEXTS + '  ' + (ok ? 'PASS' : 'FAIL'), ok ? 'o' : 'e');
-    if (GL_CONTEXTS > 1) log('WEBGL CONTEXT LEAK: ' + GL_CONTEXTS + ' contexts. This is the bug that kills the visual after ~16 cross-filters.', 'e');
+    if (GL_CONTEXTS > 0) log('Unexpected WebGL context in a DOM/SVG build.', 'e');
     window.__HARNESS = { roots: roots, css: css, canv: canv, ctx: GL_CONTEXTS, panels: panels, ok: ok };
   }, 90);
 }

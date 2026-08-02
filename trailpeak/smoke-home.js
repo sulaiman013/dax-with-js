@@ -109,28 +109,25 @@ async function waitForTarget(timeoutMs) {
     await sleep(2600);
 
     /* --- 1. does WebGL2 exist at all in this headless build? ------------- */
-    const glInfo = await evalJs(`(function(){
-      var c=document.createElement('canvas');
-      c.__counted=true;              /* exempt the probe from the leak counter */
-      var g=c.getContext('webgl2');
-      if(!g) return 'NO WEBGL2';
-      var d=g.getExtension('WEBGL_debug_renderer_info');
-      return g.getParameter(d?d.UNMASKED_RENDERER_WEBGL:g.RENDERER);
+    const fonts = await evalJs(`(function(){
+      var out=[];
+      try{ document.fonts.forEach(function(f){ out.push(f.family+' '+f.weight+' '+f.status); }); }
+      catch(e){ return 'font API unavailable'; }
+      return out.join(' | ');
     })()`);
-    console.log('WebGL2 renderer      :', glInfo);
-    if (glInfo === 'NO WEBGL2') throw new Error('headless browser has no WebGL2; cannot smoke test');
+    console.log('embedded fonts       :', fonts);
 
     /* --- 2. did the renderer boot? --------------------------------------- */
     let st = await evalJs(`(function(){
       return {
         installed: !!(window.TPH && window.TPH.__installed),
         version: window.TPH ? window.TPH.version : null,
-        panels: document.querySelectorAll('.tph-p').length,
+        panels: document.querySelectorAll('.tph-card').length,
         kpis: document.querySelectorAll('.tph-kpi').length,
-        regions: document.querySelectorAll('.tph-rrow').length,
-        tiles: document.querySelectorAll('.tph-t').length,
-        prods: document.querySelectorAll('.tph-prow').length,
-        canvasW: (document.querySelector('canvas.tph-gl')||{}).width || 0,
+        chips: document.querySelectorAll('.tph-chip').length,
+        rows: document.querySelectorAll('.tph-row').length,
+        mapNodes: document.querySelectorAll('.tph-node').length,
+        mapPaths: document.querySelectorAll('.tph-mapw svg path').length,
         fail: document.querySelectorAll('.tph-fail').length,
         failText: (document.querySelector('.tph-fail code')||{}).textContent || ''
       };
@@ -138,7 +135,10 @@ async function waitForTarget(timeoutMs) {
     console.log('boot                 :', JSON.stringify(st));
     if (st.fail) throw new Error('renderer painted its failure state: ' + st.failText);
     if (!st.installed) throw new Error('window.TPH was never installed');
-    if (st.panels < 5) throw new Error('expected at least 5 panels, got ' + st.panels);
+    if (st.panels < 2) throw new Error('expected map + board panels, got ' + st.panels);
+    if (st.mapNodes !== 12) throw new Error('expected 12 store bubbles, got ' + st.mapNodes);
+    if (st.kpis !== 4) throw new Error('expected 4 KPI cards, got ' + st.kpis);
+    if (st.rows !== 12) throw new Error('expected 12 leaderboard rows, got ' + st.rows);
 
     /* --- 3. did it actually draw pixels? ---------------------------------
      * readPixels cannot be trusted here: the context is created without
@@ -189,8 +189,8 @@ async function waitForTarget(timeoutMs) {
     const h = await evalJs(`window.__HARNESS`);
     console.log('after 21 injections  :', JSON.stringify(h));
     if (!h) throw new Error('harness never ran its check');
-    if (h.ctx !== 1) throw new Error('WEBGL CONTEXT LEAK: ' + h.ctx + ' contexts created (expected 1)');
-    if (h.roots !== 1 || h.css !== 1 || h.canv !== 1) throw new Error('idempotency violated: ' + JSON.stringify(h));
+    if (h.ctx !== 0) throw new Error('unexpected WebGL context: ' + h.ctx);
+    if (h.roots !== 1 || h.css !== 1) throw new Error('idempotency violated: ' + JSON.stringify(h));
 
     /* --- 5. empty payload must degrade, not throw ------------------------ */
     await evalJs(`document.getElementById('empty').click()`);

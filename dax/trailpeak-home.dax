@@ -2,9 +2,11 @@
 // TrailPeak Outfitters - HOME
 // The landing page of the report as a single data-only DAX measure.
 // ----------------------------------------------------------------------------
-// Renderer : trailpeak/trailpeak-home.js  (hand-written WebGL2, no Three.js)
+// Renderer : trailpeak/trailpeak-home.js  (DOM + SVG; fonts and the projected
+//            US outline are baked into the file, so runtime needs no d3, no
+//            topojson, no atlas fetch and no webfont request)
 // Serve    : https://cdn.statically.io/gh/sulaiman013/dax-with-js
-//              @trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js
+//              @trailpeak-home-v2.0.0/trailpeak/trailpeak-home.js
 //
 // This measure ships AGGREGATES ONLY, roughly 5KB, against a ~2,100,000
 // character ceiling. The one-page build [JS Report Page] ships facts at grain
@@ -38,7 +40,7 @@
 
 JS Home Page =
 VAR CdnUrl =
-    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js"
+    "https://cdn.statically.io/gh/sulaiman013/dax-with-js@trailpeak-home-v2.0.0/trailpeak/trailpeak-home.js"
 
 // A backslash, built from its code point. A bare "\" in DAX is legal but reads
 // like a typo and does not survive copy-paste through JSON-based tooling.
@@ -300,7 +302,7 @@ VAR Payload =
 // contains no "<" at all and cannot terminate the script block it lives in.
 // The escape chain protects values; this protects the code around them.
 VAR AltUrl =
-    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-home-v1.0.0/trailpeak/trailpeak-home.js"
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@trailpeak-home-v2.0.0/trailpeak/trailpeak-home.js"
 
 // Timing note, learned the hard way in the Service rather than in Desktop.
 // A cold fetch through the Service took longer than the original seven second
