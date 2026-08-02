@@ -13,14 +13,16 @@ import { dirname, join } from 'path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, 'src', 'trailpeak-home.src.js'), 'utf8');
-const fonts = readFileSync(join(here, 'src', 'fonts-baked.js'), 'utf8');
 const usmap = readFileSync(join(here, 'src', 'us-baked.js'), 'utf8');
 
 const indent = (s) => s.trimEnd().split('\n').map(l => (l ? '  ' + l : l)).join('\n');
 
 let out = src;
+/* v3 dropped the embedded webfonts. The page now sits beside native Power BI
+   pages and has to look like them, and Power BI renders in Segoe UI, which is
+   already present wherever this runs. That removed 94KB and the last webfont
+   request in one edit: matching the host is cheaper than importing a look. */
 for (const [marker, asset, label] of [
-  ['/*__BAKED_FONTS__*/', fonts, 'fonts'],
   ['/*__BAKED_USMAP__*/', usmap, 'usmap'],
 ]) {
   if (!out.includes(marker)) throw new Error(`marker ${marker} not found in source`);

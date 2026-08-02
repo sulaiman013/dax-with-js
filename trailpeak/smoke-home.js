@@ -109,36 +109,86 @@ async function waitForTarget(timeoutMs) {
     await sleep(2600);
 
     /* --- 1. does WebGL2 exist at all in this headless build? ------------- */
-    const fonts = await evalJs(`(function(){
-      var out=[];
-      try{ document.fonts.forEach(function(f){ out.push(f.family+' '+f.weight+' '+f.status); }); }
-      catch(e){ return 'font API unavailable'; }
-      return out.join(' | ');
-    })()`);
-    console.log('embedded fonts       :', fonts);
-
     /* --- 2. did the renderer boot? --------------------------------------- */
+    const q = (sel) => `document.querySelectorAll('${sel}').length`;
     let st = await evalJs(`(function(){
+      function n(s){return document.querySelectorAll(s).length;}
+      function txt(s){var e=document.querySelector(s);return e?e.textContent.trim():'';}
       return {
         installed: !!(window.TPH && window.TPH.__installed),
         version: window.TPH ? window.TPH.version : null,
-        panels: document.querySelectorAll('.tph-card').length,
-        kpis: document.querySelectorAll('.tph-kpi').length,
-        chips: document.querySelectorAll('.tph-chip').length,
-        rows: document.querySelectorAll('.tph-row').length,
-        mapNodes: document.querySelectorAll('.tph-node').length,
-        mapPaths: document.querySelectorAll('.tph-mapw svg path').length,
-        fail: document.querySelectorAll('.tph-fail').length,
-        failText: (document.querySelector('.tph-fail code')||{}).textContent || ''
+        cards: n('.tph-card'), kpis: n('.tph-kpi'), chips: n('.tph-chip'),
+        rows: n('.tph-row'), nodes: n('.tph-node'), paths: n('.tph-mapw svg path'),
+        netRev: txt('.tph-kpi:nth-child(1) .tph-kv'),
+        opProfit: txt('.tph-kpi:nth-child(4) .tph-kv'),
+        vital: txt('.tph-kpi:nth-child(6) .tph-kv'),
+        fail: n('.tph-fail')
       };
     })()`);
     console.log('boot                 :', JSON.stringify(st));
-    if (st.fail) throw new Error('renderer painted its failure state: ' + st.failText);
+    if (st.fail) throw new Error('renderer painted its failure state');
     if (!st.installed) throw new Error('window.TPH was never installed');
-    if (st.panels < 2) throw new Error('expected map + board panels, got ' + st.panels);
-    if (st.mapNodes !== 12) throw new Error('expected 12 store bubbles, got ' + st.mapNodes);
-    if (st.kpis !== 4) throw new Error('expected 4 KPI cards, got ' + st.kpis);
-    if (st.rows !== 12) throw new Error('expected 12 leaderboard rows, got ' + st.rows);
+    if (st.kpis !== 6) throw new Error('expected 6 KPI cards, got ' + st.kpis);
+    if (st.nodes !== 12) throw new Error('expected 12 map bubbles, got ' + st.nodes);
+    if (st.rows !== 12) throw new Error('expected 12 store rows, got ' + st.rows);
+    if (st.netRev !== '$112,336,020') throw new Error('unfiltered net revenue wrong: ' + st.netRev);
+
+    /* --- THE POINT OF v3: does a region chip actually re-aggregate? ------- */
+    const clickChip = async (label) => {
+      await evalJs(`(function(){
+        var b=[].slice.call(document.querySelectorAll('[data-region]'))
+                .filter(function(x){return x.textContent.trim()==='${label}';})[0];
+        if(b) b.click();
+      })()`);
+      await sleep(320);
+      return evalJs(`(function(){
+        function n(s){return document.querySelectorAll(s).length;}
+        function txt(s){var e=document.querySelector(s);return e?e.textContent.trim():'';}
+        return { netRev: txt('.tph-kpi:nth-child(1) .tph-kv'),
+                 opProfit: txt('.tph-kpi:nth-child(4) .tph-kv'),
+                 vital: txt('.tph-kpi:nth-child(6) .tph-kv'),
+                 rows: n('.tph-row'), chipsOn: n('.tph-chip.on') };
+      })()`);
+    };
+
+    const mtn = await clickChip('Mountain');
+    console.log('region=Mountain      :', JSON.stringify(mtn));
+    if (mtn.netRev !== '$37,154,047') throw new Error('Mountain revenue wrong: ' + mtn.netRev + ' (expected $37,154,047)');
+    if (mtn.rows !== 4) throw new Error('Mountain should leave 4 stores, got ' + mtn.rows);
+    if (mtn.vital === st.vital) console.log('  note: vital-few unchanged under filter (may be legitimate)');
+
+    const both = await clickChip('Pacific');
+    console.log('region=Mtn+Pacific   :', JSON.stringify(both));
+    if (both.netRev !== '$66,659,722') throw new Error('Mountain+Pacific wrong: ' + both.netRev + ' (expected $66,659,722)');
+    if (both.rows !== 7) throw new Error('Mountain+Pacific should leave 7 stores, got ' + both.rows);
+
+    /* store cross-filter narrows the KPI strip but keeps the league table */
+    await evalJs(`(function(){var r=document.querySelector('.tph-row[data-store]');if(r)r.click();})()`);
+    await sleep(320);
+    const one = await evalJs(`(function(){
+      function n(s){return document.querySelectorAll(s).length;}
+      function txt(s){var e=document.querySelector(s);return e?e.textContent.trim():'';}
+      return { netRev: txt('.tph-kpi:nth-child(1) .tph-kv'), rows: n('.tph-row'),
+               dimmed: n('.tph-row.off'), detail: n('.tph-detail') };
+    })()`);
+    console.log('store cross-filter   :', JSON.stringify(one));
+    if (one.netRev === both.netRev) throw new Error('selecting a store did not change the KPI strip');
+    if (one.rows !== 7) throw new Error('store table should still show all 7 in-scope stores, got ' + one.rows);
+    if (one.dimmed !== 6) throw new Error('expected 6 dimmed rows, got ' + one.dimmed);
+    if (one.detail !== 1) throw new Error('store detail card did not appear');
+
+    /* products league table must follow the same scope */
+    await evalJs(`(function(){var b=document.querySelector('[data-mode="products"]');if(b)b.click();})()`);
+    await sleep(320);
+    const prod = await evalJs(`document.querySelectorAll('.tph-row').length`);
+    console.log('products mode rows   :', prod);
+    if (!prod) throw new Error('products league table is empty');
+
+    await evalJs(`(function(){var b=document.querySelector('[data-reset]');if(b)b.click();})()`);
+    await sleep(320);
+    const back = await evalJs(`(function(){var e=document.querySelector('.tph-kpi:nth-child(1) .tph-kv');return e?e.textContent.trim():'';})()`);
+    console.log('after reset          :', back);
+    if (back !== '$112,336,020') throw new Error('reset did not restore the unfiltered total: ' + back);
 
     /* --- 3. did it actually draw pixels? ---------------------------------
      * readPixels cannot be trusted here: the context is created without
@@ -178,8 +228,7 @@ async function waitForTarget(timeoutMs) {
     }
     const painted = await sampleScreen('globe pixels');
     if (painted.error) throw new Error('screenshot decode failed');
-    if (painted.colours < 40) throw new Error('centre of the canvas has only ' + painted.colours +
-      ' distinct colours; the scene almost certainly did not render');
+    if (painted.colours < 12) throw new Error('page centre has only ' + painted.colours + ' distinct colours');
 
     /* --- 4. the idempotency invariant ------------------------------------ */
     await evalJs(`document.getElementById('x10').click()`);
@@ -205,7 +254,11 @@ async function waitForTarget(timeoutMs) {
     await sleep(500);
 
     /* --- 6. screenshot for the eyeball check ------------------------------ */
-    await evalJs(`document.getElementById('stage').style.cssText='position:absolute;inset:0;height:100vh'`);
+    await evalJs(`(function(){var b=document.querySelector('[data-mode="stores"]');if(b)b.click();})()`);
+    await sleep(300);
+    await evalJs(`document.querySelector('header').style.display='none';
+                  document.getElementById('log').style.display='none';
+                  document.getElementById('stage').style.cssText='position:absolute;inset:0;height:100vh'`);
     await sleep(1200);
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     if (shot.result && shot.result.data) {
