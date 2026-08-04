@@ -72,7 +72,7 @@ neighbours 97%, of a set they are not in.
 | [`preview-page.html`](preview-page.html) | The whole page, offline. Open it in a browser, no server needed. |
 | [`preview-figure.html`](preview-figure.html) | Just the figure, for working on the geometry. |
 | [`anatomy.spec.js`](anatomy.spec.js) | 25 geometry tests. |
-| [`renderer.spec.js`](renderer.spec.js) | 52 renderer tests. |
+| [`renderer.spec.js`](renderer.spec.js) | 46 renderer tests. |
 | [`bake_ai.py`](bake_ai.py) | Generates one explanation per body region at build time and grounds-checks each. |
 | [`ai-baked.json`](ai-baked.json) | The 30 generated explanations, shipped as data inside the measure. |
 | [`mutate.py`](mutate.py) | Injects real defects to prove the suite can fail. |
@@ -114,8 +114,9 @@ but would fix the filter set at build time, which is the thing being avoided.
 **The runtime is inlined, not fetched from a CDN.** A CDN needs a loader, a
 retry and a watchdog, and in the Service the first cold fetch is slow enough
 that a naive watchdog fires before the script lands and reports a failure that
-is not real. At 41KB against a ~2,100,000 character ceiling, inlining costs
-2.6% of the budget and removes the whole failure mode.
+is not real. The generated measure is 79,579 characters against a ~2,100,000
+character ceiling, so inlining costs 3.8% of the budget and removes the whole
+failure mode.
 
 **Only digits and commas cross the DAX boundary.** Dimension labels are baked
 into the runtime rather than shipped from the model, which removes string
@@ -225,7 +226,7 @@ python make_fixture.py             # build preview-page.html + the oracle
 npx playwright test
 ```
 
-78 tests in two suites.
+71 tests in two suites.
 
 **`anatomy.spec.js`** holds the figure to its placement rules: all 27 regions
 present on the right views, sub-regions inside their parents, extremities
