@@ -504,7 +504,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     var scoped = sel.length > 0;
 
     if (!agg.cases) {
-      return { title: 'Nothing selected matches',
+      return { title: 'Nothing selected matches', caveat: '',
                lines: ['No cases fall inside the current filters. Clear one to see data again.'] };
     }
 
@@ -571,28 +571,42 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
                ' cases in the recent half against ' + num(older) + ' in the earlier.');
     }
 
-    /* 6. The caveat, if one applies. Better said here than discovered later. */
-    if (agg.partialDenominator) {
-      out.push('<i>Rates divide by total exposure: hours carry no region, ' +
-               'severity, mechanism or role grain, so this filter narrows the ' +
-               'cases but cannot narrow the hours.</i>');
-    }
+    /* 6. The caveat, if one applies. Kept apart from the detail lines because
+          it survives even when they are dropped to make room for the model. */
+    var caveat = agg.partialDenominator
+      ? '<i>Rates divide by total exposure: hours carry no region, severity, ' +
+        'mechanism or role grain, so this filter narrows the cases but cannot ' +
+        'narrow the hours.</i>'
+      : '';
 
-    return { title: scoped ? sel.join(' and ') : 'The period in full', lines: out };
+    return { title: scoped ? sel.join(' and ') : 'The period in full',
+             lines: out, caveat: caveat };
+  }
+
+  /* A prompt asking for 55 words is a request, not a guarantee, and the pane
+     cannot grow. Trim to the last full sentence that fits so a verbose reply
+     loses a clause rather than silently losing its tail off the bottom. */
+  function clampProse(t, max) {
+    if (t.length <= max) return t;
+    var cut = t.slice(0, max);
+    var stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
+    return (stop > max * 0.5 ? cut.slice(0, stop + 1) : cut.replace(/\s+\S*$/, '') + '…');
   }
 
   function explainPanel(p, agg) {
     var n = narrate(agg, baseline(p), KV.state);
     var ai = window.__kvAI && window.__kvAI.key;
     var cached = KV.aiText && KV.aiKey === stateKey();
+    var lines = cached ? n.lines.slice(0, 1) : n.lines;
     return '<div class="kv-panel kv-explain"><h3>What this shows' +
       (ai ? '<button class="kv-ai" data-ai="1"' + (KV.aiBusy ? ' disabled' : '') + '>' +
-        (KV.aiBusy ? 'Thinking…' : (cached ? 'Regenerate' : 'Ask the model')) +
+        (KV.aiBusy ? 'Thinking…' : (cached ? 'Show the detail' : 'Ask the model')) +
         '</button>' : '<span class="kv-h3n">updates with every selection</span>') +
       '</h3><div class="kv-ex"><p class="kv-exh">' + esc(n.title) + '</p>' +
-      n.lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
-      (cached ? '<p class="kv-aitext">' + esc(KV.aiText) + '</p>' : '') +
+      lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+      (cached ? '<p class="kv-aitext">' + esc(clampProse(KV.aiText, 360)) + '</p>' : '') +
       (KV.aiErr ? '<p class="kv-aierr">' + esc(KV.aiErr) + '</p>' : '') +
+      (n.caveat ? '<p>' + n.caveat + '</p>' : '') +
       '</div></div>';
   }
 
@@ -817,6 +831,16 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       },
       unfiltered: { cases: base.cases, recordable: base.recordable,
                     trir: base.trir == null ? null : +base.trir.toFixed(2) },
+      /* Precomputed so the model never has to do arithmetic. Every percentage
+         it might reach for is already here, which lets the grounding check
+         below be strict instead of having to allow for derived values. */
+      derived: {
+        shareOfAllCasesPct: +pct(agg.cases, base.cases).toFixed(1),
+        recordableSharePct: +pct(agg.recordable, agg.cases).toFixed(1),
+        recordableShareUnfilteredPct: +pct(base.recordable, base.cases).toFixed(1),
+        daysPerLostTimeCase: agg.lost ? +(agg.daysAway / agg.lost).toFixed(1) : null,
+        hoursWorkedMillions: +(agg.hours / 1e6).toFixed(2)
+      },
       topBodyRegions: top(agg.byRegion, window.KV_REGIONS, 5),
       topMechanisms: top(agg.byMech, window.KV_MECH, 5),
       topRoles: top(agg.byRole, window.KV_ROLE, 5),
@@ -828,16 +852,48 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     };
   }
 
+  /* Post-validation. Measured over 24 live calls, one reply printed exposure
+     hours as 209,000,000 against a real 20,900,000: a single extra zero, in a
+     safety report, phrased with total confidence. Prompting alone cannot rule
+     that out, so every figure in the reply is checked against the brief that
+     produced it and the whole reply is withheld if any of them is not there.
+     A missing explanation is recoverable; a wrong number that looks official
+     is not. The deterministic summary above is unaffected either way. */
+  function ungroundedNumbers(text, facts) {
+    var hay = JSON.stringify(facts);
+    var seen = {};
+    /* Every literal in the brief, plus the same values with thousands
+       separators, since that is how the model will naturally write them. */
+    (hay.match(/\d+(?:\.\d+)?/g) || []).forEach(function (v) {
+      seen[v] = 1;
+      seen[Number(v).toLocaleString('en-US')] = 1;
+      seen[String(Math.round(Number(v)))] = 1;
+    });
+    var bad = [];
+    (text.match(/\b\d[\d,]*(?:\.\d+)?\b/g) || []).forEach(function (raw) {
+      var plain = raw.replace(/,/g, '');
+      if (seen[plain] || seen[raw] || seen[String(Number(plain))]) return;
+      /* Ordinals and small counts inside prose ("the top 3") are not claims
+         about the data; anything four digits or more is. */
+      if (Number(plain) < 100 && plain.indexOf('.') === -1) return;
+      if (bad.indexOf(raw) === -1) bad.push(raw);
+    });
+    return bad;
+  }
+
   var AI_SYSTEM =
     'You are a safety analyst briefing an HSE manager on an occupational injury ' +
     'report. You will be given the aggregate the dashboard is currently showing. ' +
     'Write three or four short sentences of plain English: what stands out, what ' +
     'it probably means operationally, and what to look at next. ' +
-    'Rules: use only the numbers provided and never invent one. Quote figures ' +
-    'exactly as given. If rates.note says exposure is not filtered alike, do not ' +
-    'compare that rate to the unfiltered one. No bullet points, no headings, no ' +
-    'preamble, no markdown. Do not repeat the numbers back as a list; interpret ' +
-    'them.';
+    'Rules. Every figure you cite must appear verbatim in the data you are ' +
+    'given: do not calculate, do not round, do not convert units, do not infer ' +
+    'a number from another number. Percentages and averages you might want are ' +
+    'already supplied under "derived". Prefer naming things over quoting ' +
+    'figures; two or three numbers is plenty. If rates.note says exposure is ' +
+    'not filtered alike, do not compare that rate to the unfiltered one. No ' +
+    'bullet points, no headings, no preamble, no markdown. Keep it to two or ' +
+    'three sentences and under 55 words.';
 
   function askModel(p, agg, root) {
     var cfg = window.__kvAI || {};
@@ -847,6 +903,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     KV.aiErr = '';
     schedule(root, p);
 
+    var facts = aiFacts(p, agg);
     var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, cfg.timeoutMs || 25000);
 
@@ -855,12 +912,12 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       signal: ctrl ? ctrl.signal : undefined,
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.key },
       body: JSON.stringify({
-        model: cfg.model || 'google/gemini-2.0-flash-lite-001',
+        model: cfg.model || 'google/gemini-3.5-flash-lite',
         max_tokens: cfg.maxTokens || 300,
         temperature: 0.2,
         messages: [
           { role: 'system', content: AI_SYSTEM },
-          { role: 'user', content: JSON.stringify(aiFacts(p, agg)) }
+          { role: 'user', content: JSON.stringify(facts) }
         ]
       })
     }).then(function (r) {
@@ -870,7 +927,16 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       var txt = j && j.choices && j.choices[0] && j.choices[0].message &&
                 j.choices[0].message.content;
       if (!txt) throw new Error('no text in the response');
-      KV.aiText = String(txt).trim();
+      txt = String(txt).trim();
+      var bad = ungroundedNumbers(txt, facts);
+      if (bad.length) {
+        KV.aiText = '';
+        KV.aiKey = '';
+        KV.aiErr = 'Discarded: the model cited ' + bad.join(', ') +
+                   ', which is not in the data it was given. Try again.';
+        return;
+      }
+      KV.aiText = txt;
       KV.aiKey = key;
     })['catch'](function (e) {
       /* Never blank the deterministic narrative because a network call failed.
@@ -905,6 +971,11 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
           return schedule(root, window.__kvBody);
         }
         if (e.target.closest('[data-ai]')) {
+          if (KV.aiText && KV.aiKey === stateKey()) {
+            KV.aiText = '';        /* back to the full deterministic detail */
+            KV.aiKey = '';
+            return schedule(root, window.__kvBody);
+          }
           return askModel(window.__kvBody, aggregate(window.__kvBody, KV.state), root);
         }
         var fchip = e.target.closest('[data-fk]');

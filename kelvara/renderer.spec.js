@@ -597,9 +597,32 @@ test.describe('the explanation pane', () => {
       () => document.querySelector('li[data-fk="role"]')
         .dispatchEvent(new MouseEvent('click', { bubbles: true }))
     ];
+    /* Also with a model reply present: that state has more text than any
+       other, and the reply was being generated and then clipped out of sight. */
+    states.push(async () => {
+      await page.route('**/chat/completions', (r) => r.fulfill({
+        status: 200, contentType: 'application/json',
+        /* Deliberately far longer than the prompt asks for: a word limit is a
+           request, not a guarantee, and the pane has to survive a model that
+           ignores it. */
+        body: JSON.stringify({ choices: [{ message: { content:
+          'Manual handling strain dominates this pattern, concentrated among ' +
+          'fitters and materials handlers on the bulk terminals, which points ' +
+          'at lifting technique and load design rather than personal protective ' +
+          'equipment. Worth reviewing the task risk assessments next, alongside ' +
+          'the rotation policy, the racking layout, the mechanical aids ' +
+          'available on each shift, and whether the pre-task briefings are ' +
+          'actually being delivered rather than merely signed for by the crews ' +
+          'who are meant to receive them every single working morning.' } }] })
+      }));
+      await page.evaluate(() => { window.__kvAI = { key: 'k' }; window.__KV.boot(); });
+      await page.locator('.kv-ai').click();
+      await page.waitForSelector('.kv-aitext');
+    });
     const clipped = [];
     for (const step of states) {
-      if (step) await page.evaluate(step);
+      if (typeof step === 'function' && step.constructor.name === 'AsyncFunction') await step();
+      else if (step) await page.evaluate(step);
       await settle(page);
       const over = await page.evaluate(() => {
         const el = document.querySelector('.kv-ex');
@@ -649,6 +672,54 @@ test.describe('the explanation pane', () => {
       /* The deterministic narrative is still there underneath. */
       expect(await text(page)).toMatch(/1,492 cases/);
     });
+
+  test('a reply citing a number not in the data is withheld', async ({ page }) => {
+    /* Measured over 24 live calls before this guard existed, one reply printed
+       exposure hours as 209,000,000 against a real 20,900,000. A single extra
+       zero, in a safety report, stated with total confidence. Prompting cannot
+       rule that out, so the reply is checked against the brief that produced it
+       and withheld entirely if any figure is not there. */
+    await open(page);
+    await page.route('**/chat/completions', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        choices: [{ message: { content:
+          'Across 209,000,000 hours worked the hand dominates.' } }]
+      })
+    }));
+    await page.evaluate(() => {
+      window.__kvAI = { key: 'test-key' };
+      window.__KV.boot();
+    });
+    await page.locator('.kv-ai').click();
+    await expect(page.locator('.kv-aierr')).toContainText('209,000,000');
+    await expect(page.locator('.kv-aierr')).toContainText('not in the data');
+    await expect(page.locator('.kv-aitext'), 'the bad reply must not be shown')
+      .toHaveCount(0);
+    expect(await text(page), 'the real summary survives').toMatch(/219 were recordable/);
+  });
+
+  test('a reply citing only real figures is shown', async ({ page }) => {
+    /* The other half of the guard: it must not reject good replies. 20,900,000
+       and 1,492 are both in the brief. */
+    await open(page);
+    await page.route('**/chat/completions', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        choices: [{ message: { content:
+          'Across 20,900,000 hours there were 1,492 cases; hands dominate.' } }]
+      })
+    }));
+    await page.evaluate(() => {
+      window.__kvAI = { key: 'test-key' };
+      window.__KV.boot();
+    });
+    await page.locator('.kv-ai').click();
+    await expect(page.locator('.kv-aitext')).toContainText('hands dominate');
+    await expect(page.locator('.kv-aierr')).toHaveCount(0);
+  });
 
   test('a model failure degrades to the deterministic summary', async ({ page }) => {
     await open(page);
