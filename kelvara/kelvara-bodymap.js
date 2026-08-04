@@ -21,9 +21,10 @@ var KV_BU=["Mining Materials Handling","Petrochemical Turnaround","Port Bulk Ter
 var KV_SHIFT={"1":"Day","2":"Swing","3":"Night"};
 var KV_WCLASS={"1":"Employee","2":"Contractor"};
 var KV_MONTHS={"202401":"Jan 2024","202402":"Feb 2024","202403":"Mar 2024","202404":"Apr 2024","202405":"May 2024","202406":"Jun 2024","202407":"Jul 2024","202408":"Aug 2024","202409":"Sep 2024","202410":"Oct 2024","202411":"Nov 2024","202412":"Dec 2024","202501":"Jan 2025","202502":"Feb 2025","202503":"Mar 2025","202504":"Apr 2025","202505":"May 2025","202506":"Jun 2025","202507":"Jul 2025","202508":"Aug 2025","202509":"Sep 2025","202510":"Oct 2025","202511":"Nov 2025","202512":"Dec 2025","202601":"Jan 2026","202602":"Feb 2026","202603":"Mar 2026","202604":"Apr 2026","202605":"May 2026","202606":"Jun 2026"};
+var KV_AI={"1":"Skull injuries resulted in 24 cases over the period, with falls to lower levels standing out as the top mechanism at 9 incidents. This suggests elevated work hazards where overhead protection and fall prevention controls require immediate operational scrutiny. We should next examine insulation technician tasks and site conditions in Kerteh and Vlissingen to address these specific risks.","2":"Exposure to noise dominates the nine ear cases, with none being recordable. This pattern likely indicates low-severity hearing irritation or mild threshold shifts managed without severe outcomes. We should examine hearing protection compliance and noise controls for riggers and insulation technicians.","3":"Eye injuries account for 131 cases across 20900000 hours worked, with chemicals and struck-by hazards leading the mechanisms. This pattern points to potential gaps in eye protection compliance during handling and maintenance tasks. We should next examine safety practices for materials handlers and process operators at Rotterdam-Botlek.","4":"Nose injuries account for 15 total cases with no recordable incidents over the thirty months. Workers are likely bumping into stationary objects while performing tasks in close quarters. We should look closer at fitters and scaffolders working at Teesside.","5":"Face injuries stand out with 42 total cases out of 1492 unfiltered. Contact with chemical or allergenic substance is the primary mechanism at 15 cases. We should check the process operator role next since it accounts for 8 of these incidents.","6":"Mouth and jaw injuries stand out with 14 total cases and zero recordable incidents over the period. This pattern probably means staff face repeated minor impacts from swinging objects or stationary items during daily tasks. We should look closely at plant drivers and mechanical technicians across multiple sites like Vlissingen to identify hazards.","7":"Neck injuries stand out with 21 cases, mostly driven by falls on same level, slip or trip and overexertion in lifting or lowering. This probably means physical handling and walking surfaces are creating ergonomic strain for welders and materials handlers. We should look next at Rotterdam-Botlek, Pasir Gudang, and Jebel Ali for site-specific risks.","8":"Chest cases are heavily driven by being struck by falling objects, especially among riggers. This pattern likely points to overhead hazards and dropped object risks during lifting operations. We should inspect drop prevention controls and lifting practices at Kerteh and Rotterdam-Botlek.","9":"Upper back injuries are largely driven by awkward postures and overexertion during lifting, lowering, holding, or carrying. This points toward ergonomic strain on materials handlers and plant drivers. We should inspect workstation setups and handling tasks across Vlissingen and Pasir Gudang.","10":"Lower back injuries account for 50 recordable incidents, driving a large share of the severity rate. This points directly to heavy manual handling tasks and awkward postures among materials handlers. We should inspect the specific work methods at Rotterdam-Botlek and Jebel Ali next.","11":"Abdomen injuries stand out because process operators experience the most cases while struck by falling objects is the top mechanism. This probably means dropped object hazards during routine plant operations need immediate field verification. Next, we should review dropped object controls specifically around process areas at Jebel Ali.","12":"Pelvis and hip injuries stand out because 7 out of 15 cases are recordable. This probably means mechanical technicians and fitters face serious fall hazards while working at height or moving around the plant. We should look next at whether Fall to lower level incidents are happening during specific maintenance tasks.","13":"Overexertion in lifting or lowering stands out with 3 cases out of 5 total groin incidents. This pattern probably means manual handling tasks are straining operators. Next, look closely at process operator ergonomics and material handling methods.","14":"Falls on same level, slip or trip stand out with 7 cases, mostly affecting materials handlers. This pattern suggests walking surfaces and footing conditions are primary workplace hazards during material handling tasks. We should investigate site conditions at Teesside and review floor safety protocols immediately.","15":"Shoulder injuries account for 90 total cases with a notable 111 days away. Overexertion in holding or carrying is the top mechanism, suggesting manual material handling tasks are straining workers. We should review handling procedures at Rotterdam-Botlek and Pasir Gudang sites.","16":"Upper arm injuries are primarily driven by objects that fall, swing, or slip. This suggests workers face overhead hazards or handling risks during fabrication and process tasks. We should investigate line-of-sight safety controls for welders and process operators across all sites.","17":"Elbow injuries account for 34 total cases driven mostly by being struck by swinging objects or slips. Fitters and mechanical technicians face the heaviest impact, pointing toward physical maintenance tasks in tight spaces. We should examine work methods at Ras Laffan and Teesside to see what is driving these strikes and slips.","18":"Forearm injuries account for 44 total cases, with cuts and impacts driving the count. Sharp objects and swinging items suggest mechanical handling hazards on site. We should review cutting tool safety among insulation technicians and HSE advisors.","19":"Repetitive motion stands out with 15 wrist cases, leading all other mechanisms across the sites. This indicates that assembly or handling tasks likely involve excessive strain on the hands and arms. We should look at Fitters and Materials handlers next to understand their specific ergonomic hazards.","20":"Hand injuries account for 214 total cases with 60 incidents involving objects shifting. This concentration likely points to recurring pinch-point hazards during material handling tasks. We should inspect Jebel Ali operations alongside materials handler safety procedures.","21":"Fingers and thumb injuries stand out with 260 cases, representing a major share of total incidents. This pattern probably means routine hand placement during tasks like operating equipment or handling sharp objects creates frequent hazards. We should look at process operators, welders, and materials handlers to identify specific pinch point exposures.","22":"Thigh injuries stand out with twenty-five total cases, led heavily by being struck by falling objects and struck against stationary objects. This operational pattern suggests persistent hazards involving materials handling and workspace clearance around fitters. We should look next at specific task controls and housekeeping practices at Port Arthur and Rotterdam-Botlek.","23":"Knee injuries stand out with 76 total cases, heavily involving falls on the same level and slip or trips. This pattern suggests walking surfaces and housekeeping hazards are actively driving lower extremity incidents among materials handlers. We should inspect floor conditions and walking paths at the Pasir Gudang and Rotterdam-Botlek sites next.","24":"Lower leg incidents stand out with 50 total cases involving staff like welders and process operators. This probably means equipment handling and footing hazards require better operational control on site. To understand this further, we should examine the top mechanisms like being struck by a swinging or slipping object.","25":"Ankle injuries stand out with 52 total cases and account for a recordable share of 36.5 percent. This pattern probably means walking surfaces and housekeeping issues during routine work are causing frequent slips and trips. We should look next at housekeeping hazards in areas involving welders and at the Pasir Gudang site.","26":"Foot injuries generated 519 days away from work across 43 total cases. Struck by falling object and slip or trip incidents drive the primary hazards for materials handlers. We should inspect footwear controls and heavy material handling methods at Ras Laffan and Vlissingen.","27":"Electrical technicians account for 6 of these cases, driven heavily by heavy objects and equipment. This concentration points to pinch point hazards during maintenance tasks. We should review footwear standards and material handling controls for electrical teams at Kerteh and Jebel Ali.","28":"Body systems injuries account for 8 cases with a very low recordable share of 12.5 percent. This likely indicates minor environmental exposures affecting multiple technical roles across several sites equally. We should next examine chemical handling and pressure change controls.","29":"Multiple body parts injuries stand out because they account for 19 cases, with a high proportion being recordable. This likely indicates severe incidents involving powered vehicles and mechanical technicians during daily plant operations. We should next examine vehicle safety controls at Rotterdam-Botlek.","30":"Nonclassifiable incidents account for 10.0 percent of recordable cases. This pattern probably means administrative reporting gaps obscure specific injury tracking. We should look next at Welders and Fall to lower level mechanisms."};
 window.BODY_VIEWBOX=BODY_VIEWBOX;window.BODY_SHAPES=BODY_SHAPES;
 window.BODY_LABELS=BODY_LABELS;window.BODY_DETAIL=BODY_DETAIL;window.BODY_Z=BODY_Z;
-window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV_SEV;window.KV_MECH=KV_MECH;window.KV_ROLE=KV_ROLE;window.KV_SITE=KV_SITE;window.KV_SITE_BU=KV_SITE_BU;window.KV_BU=KV_BU;window.KV_SHIFT=KV_SHIFT;window.KV_WCLASS=KV_WCLASS;window.KV_MONTHS=KV_MONTHS;
+window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV_SEV;window.KV_MECH=KV_MECH;window.KV_ROLE=KV_ROLE;window.KV_SITE=KV_SITE;window.KV_SITE_BU=KV_SITE_BU;window.KV_BU=KV_BU;window.KV_SHIFT=KV_SHIFT;window.KV_WCLASS=KV_WCLASS;window.KV_MONTHS=KV_MONTHS;window.KV_AI=KV_AI;
 /* Kelvara HSE body map, renderer.
    ---------------------------------------------------------------------------
    Runs inside the HTML Content visual's sandboxed iframe, which has a null
@@ -265,7 +266,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       var on = !!sel[row[0]];
       html += '<li' + (key ? ' data-fk="' + key + '" data-fv="' + esc(row[0]) +
               '" role="button" tabindex="0" aria-pressed="' + on + '"' : '') +
-              (on ? ' class="on"' : '') + '>' +
+              (on ? ' class="on"' : '') + ' title="' + esc(row[1]) + ': ' +
+              num(row[2]) + ' cases">' +
               '<span class="kv-bl">' + esc(row[1]) + '</span>' +
               '<span class="kv-bt"><i style="width:' + ((row[2] / max) * 100).toFixed(1) +
               '%;background:' + colour + '"></i></span>' +
@@ -593,20 +595,52 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     return (stop > max * 0.5 ? cut.slice(0, stop + 1) : cut.replace(/\s+\S*$/, '') + '…');
   }
 
+  /* A baked explanation was written about one region's numbers and nothing
+     else, so it may only be shown when that region is the sole selection.
+     Under any other combination the figures it cites would not be the figures
+     on screen, and the calculated narrative takes over. */
+  function bakedText() {
+    var st = KV.state;
+    if (st.region == null || st.sev != null) return '';
+    for (var i = 0; i < SETS.length; i++) if (anyOn(st[SETS[i]])) return '';
+    return (window.KV_AI || {})[st.region] || '';
+  }
+
   function explainPanel(p, agg) {
     var n = narrate(agg, baseline(p), KV.state);
     var ai = window.__kvAI && window.__kvAI.key;
-    var cached = KV.aiText && KV.aiKey === stateKey();
+    var baked = bakedText();
+    var cached = (KV.aiText && KV.aiKey === stateKey()) || !!baked;
     var lines = cached ? n.lines.slice(0, 1) : n.lines;
+    var model = (window.__kvAI && window.__kvAI.model) || 'google/gemini-3.5-flash-lite';
+
+    /* The two blocks are produced completely differently and one of them can be
+       wrong, so they are labelled and boxed differently. An earlier version
+       separated them with a dashed rule and a slightly different grey, which
+       read as one continuous paragraph: a reader had no way to tell which
+       sentences were computed and which were written by a model. */
+    var computed =
+      '<div class="kv-block kv-calc">' +
+        '<span class="kv-tag">Calculated from the data</span>' +
+        '<p class="kv-exh">' + esc(n.title) + '</p>' +
+        lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+      '</div>';
+
+    var shown = KV.aiText && KV.aiKey === stateKey() ? KV.aiText : baked;
+    var generated = shown
+      ? '<div class="kv-block kv-gen">' +
+          '<span class="kv-tag kv-tagai">Written by ' + esc(model.split('/').pop()) +
+          '</span><p>' + esc(clampProse(shown, 300)) + '</p>' +
+        '</div>'
+      : '';
+
     return '<div class="kv-panel kv-explain"><h3>What this shows' +
       (ai ? '<button class="kv-ai" data-ai="1"' + (KV.aiBusy ? ' disabled' : '') + '>' +
-        (KV.aiBusy ? 'Thinking…' : (cached ? 'Show the detail' : 'Ask the model')) +
-        '</button>' : '<span class="kv-h3n">updates with every selection</span>') +
-      '</h3><div class="kv-ex"><p class="kv-exh">' + esc(n.title) + '</p>' +
-      lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
-      (cached ? '<p class="kv-aitext">' + esc(clampProse(KV.aiText, 360)) + '</p>' : '') +
+        (KV.aiBusy ? 'Thinking…' : (KV.aiText ? 'Hide the model text' : 'Ask the model')) +
+        '</button>' : '<span class="kv-h3n">calculated, no model involved</span>') +
+      '</h3><div class="kv-ex">' + computed + generated +
       (KV.aiErr ? '<p class="kv-aierr">' + esc(KV.aiErr) + '</p>' : '') +
-      (n.caveat ? '<p>' + n.caveat + '</p>' : '') +
+      (n.caveat ? '<p class="kv-cav">' + n.caveat + '</p>' : '') +
       '</div></div>';
   }
 
@@ -782,6 +816,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     KV.frame = requestAnimationFrame(function () {
       KV.frame = 0;
       paint(root, p);
+      fit();
     });
   }
 
@@ -951,6 +986,40 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     });
   }
 
+  /* --------------------------------------------------------------- scaling */
+
+  /* The page is authored at exactly 1920x1080 and then scaled to whatever box
+     the visual hands us. Power BI sizes the visual's iframe in real pixels,
+     which on a windowed Desktop is routinely half the design size; a fluid
+     layout with fixed bands (head 44, filter bar 86, KPI 92, trend row 254)
+     had nothing left for the figure and crushed it to about 160px. Scaling a
+     fixed stage keeps the composition identical at every size, which is what
+     the rest of the report means by FitToPage. */
+  function fit() {
+    var root = document.getElementById('kv-root');
+    var box = document.getElementById('kv-fit');
+    if (!root || !box) return;
+    var w = box.clientWidth || window.innerWidth;
+    var h = box.clientHeight || window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1920, h / 1080);
+    /* Centre the leftover space rather than pinning to a corner. */
+    var x = Math.max(0, (w - 1920 * s) / 2);
+    var y = Math.max(0, (h - 1080 * s) / 2);
+    root.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) +
+                           'px) scale(' + s.toFixed(4) + ')';
+  }
+
+  function watchSize() {
+    if (KV.sized) return;
+    KV.sized = true;
+    if (typeof ResizeObserver === 'function') {
+      var box = document.getElementById('kv-fit');
+      if (box) { new ResizeObserver(fit).observe(box); }
+    }
+    window.addEventListener('resize', fit);
+  }
+
   /* ------------------------------------------------------------------ boot */
 
   KV.boot = function () {
@@ -1043,6 +1112,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     }
 
     paint(root, p);
+    fit();
+    watchSize();
   };
 
   KV.boot();

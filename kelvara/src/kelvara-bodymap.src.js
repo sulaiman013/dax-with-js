@@ -239,7 +239,8 @@
       var on = !!sel[row[0]];
       html += '<li' + (key ? ' data-fk="' + key + '" data-fv="' + esc(row[0]) +
               '" role="button" tabindex="0" aria-pressed="' + on + '"' : '') +
-              (on ? ' class="on"' : '') + '>' +
+              (on ? ' class="on"' : '') + ' title="' + esc(row[1]) + ': ' +
+              num(row[2]) + ' cases">' +
               '<span class="kv-bl">' + esc(row[1]) + '</span>' +
               '<span class="kv-bt"><i style="width:' + ((row[2] / max) * 100).toFixed(1) +
               '%;background:' + colour + '"></i></span>' +
@@ -567,20 +568,52 @@
     return (stop > max * 0.5 ? cut.slice(0, stop + 1) : cut.replace(/\s+\S*$/, '') + '…');
   }
 
+  /* A baked explanation was written about one region's numbers and nothing
+     else, so it may only be shown when that region is the sole selection.
+     Under any other combination the figures it cites would not be the figures
+     on screen, and the calculated narrative takes over. */
+  function bakedText() {
+    var st = KV.state;
+    if (st.region == null || st.sev != null) return '';
+    for (var i = 0; i < SETS.length; i++) if (anyOn(st[SETS[i]])) return '';
+    return (window.KV_AI || {})[st.region] || '';
+  }
+
   function explainPanel(p, agg) {
     var n = narrate(agg, baseline(p), KV.state);
     var ai = window.__kvAI && window.__kvAI.key;
-    var cached = KV.aiText && KV.aiKey === stateKey();
+    var baked = bakedText();
+    var cached = (KV.aiText && KV.aiKey === stateKey()) || !!baked;
     var lines = cached ? n.lines.slice(0, 1) : n.lines;
+    var model = (window.__kvAI && window.__kvAI.model) || 'google/gemini-3.5-flash-lite';
+
+    /* The two blocks are produced completely differently and one of them can be
+       wrong, so they are labelled and boxed differently. An earlier version
+       separated them with a dashed rule and a slightly different grey, which
+       read as one continuous paragraph: a reader had no way to tell which
+       sentences were computed and which were written by a model. */
+    var computed =
+      '<div class="kv-block kv-calc">' +
+        '<span class="kv-tag">Calculated from the data</span>' +
+        '<p class="kv-exh">' + esc(n.title) + '</p>' +
+        lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+      '</div>';
+
+    var shown = KV.aiText && KV.aiKey === stateKey() ? KV.aiText : baked;
+    var generated = shown
+      ? '<div class="kv-block kv-gen">' +
+          '<span class="kv-tag kv-tagai">Written by ' + esc(model.split('/').pop()) +
+          '</span><p>' + esc(clampProse(shown, 300)) + '</p>' +
+        '</div>'
+      : '';
+
     return '<div class="kv-panel kv-explain"><h3>What this shows' +
       (ai ? '<button class="kv-ai" data-ai="1"' + (KV.aiBusy ? ' disabled' : '') + '>' +
-        (KV.aiBusy ? 'Thinking…' : (cached ? 'Show the detail' : 'Ask the model')) +
-        '</button>' : '<span class="kv-h3n">updates with every selection</span>') +
-      '</h3><div class="kv-ex"><p class="kv-exh">' + esc(n.title) + '</p>' +
-      lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
-      (cached ? '<p class="kv-aitext">' + esc(clampProse(KV.aiText, 360)) + '</p>' : '') +
+        (KV.aiBusy ? 'Thinking…' : (KV.aiText ? 'Hide the model text' : 'Ask the model')) +
+        '</button>' : '<span class="kv-h3n">calculated, no model involved</span>') +
+      '</h3><div class="kv-ex">' + computed + generated +
       (KV.aiErr ? '<p class="kv-aierr">' + esc(KV.aiErr) + '</p>' : '') +
-      (n.caveat ? '<p>' + n.caveat + '</p>' : '') +
+      (n.caveat ? '<p class="kv-cav">' + n.caveat + '</p>' : '') +
       '</div></div>';
   }
 
@@ -756,6 +789,7 @@
     KV.frame = requestAnimationFrame(function () {
       KV.frame = 0;
       paint(root, p);
+      fit();
     });
   }
 
@@ -925,6 +959,40 @@
     });
   }
 
+  /* --------------------------------------------------------------- scaling */
+
+  /* The page is authored at exactly 1920x1080 and then scaled to whatever box
+     the visual hands us. Power BI sizes the visual's iframe in real pixels,
+     which on a windowed Desktop is routinely half the design size; a fluid
+     layout with fixed bands (head 44, filter bar 86, KPI 92, trend row 254)
+     had nothing left for the figure and crushed it to about 160px. Scaling a
+     fixed stage keeps the composition identical at every size, which is what
+     the rest of the report means by FitToPage. */
+  function fit() {
+    var root = document.getElementById('kv-root');
+    var box = document.getElementById('kv-fit');
+    if (!root || !box) return;
+    var w = box.clientWidth || window.innerWidth;
+    var h = box.clientHeight || window.innerHeight;
+    if (!w || !h) return;
+    var s = Math.min(w / 1920, h / 1080);
+    /* Centre the leftover space rather than pinning to a corner. */
+    var x = Math.max(0, (w - 1920 * s) / 2);
+    var y = Math.max(0, (h - 1080 * s) / 2);
+    root.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) +
+                           'px) scale(' + s.toFixed(4) + ')';
+  }
+
+  function watchSize() {
+    if (KV.sized) return;
+    KV.sized = true;
+    if (typeof ResizeObserver === 'function') {
+      var box = document.getElementById('kv-fit');
+      if (box) { new ResizeObserver(fit).observe(box); }
+    }
+    window.addEventListener('resize', fit);
+  }
+
   /* ------------------------------------------------------------------ boot */
 
   KV.boot = function () {
@@ -1017,6 +1085,8 @@
     }
 
     paint(root, p);
+    fit();
+    watchSize();
   };
 
   KV.boot();

@@ -139,7 +139,7 @@ html = (
     '<!doctype html><meta charset="utf-8">'
     '<title>Kelvara body map fixture</title>'
     '<style>%s</style>'
-    '<div id="kv-root" tabindex="0"></div>'
+    '<div id="kv-fit"><div id="kv-root" tabindex="0"></div></div>'
     '<script>window.__kvErrors=[];'
     'window.addEventListener("error",function(e){window.__kvErrors.push(String(e.message));});'
     '</script>'

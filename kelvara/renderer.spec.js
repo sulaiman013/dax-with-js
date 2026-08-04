@@ -617,7 +617,7 @@ test.describe('the explanation pane', () => {
       }));
       await page.evaluate(() => { window.__kvAI = { key: 'k' }; window.__KV.boot(); });
       await page.locator('.kv-ai').click();
-      await page.waitForSelector('.kv-aitext');
+      await page.waitForSelector('.kv-gen p');
     });
     const clipped = [];
     for (const step of states) {
@@ -661,7 +661,7 @@ test.describe('the explanation pane', () => {
         window.__KV.boot();
       });
       await page.locator('.kv-ai').click();
-      await expect(page.locator('.kv-aitext')).toHaveText(/glove policy/);
+      await expect(page.locator('.kv-gen p')).toHaveText(/glove policy/);
 
       expect(sent, 'a request was made').toBeTruthy();
       const brief = JSON.parse(sent.messages[1].content);
@@ -695,7 +695,7 @@ test.describe('the explanation pane', () => {
     await page.locator('.kv-ai').click();
     await expect(page.locator('.kv-aierr')).toContainText('209,000,000');
     await expect(page.locator('.kv-aierr')).toContainText('not in the data');
-    await expect(page.locator('.kv-aitext'), 'the bad reply must not be shown')
+    await expect(page.locator('.kv-gen p'), 'the bad reply must not be shown')
       .toHaveCount(0);
     expect(await text(page), 'the real summary survives').toMatch(/219 were recordable/);
   });
@@ -717,7 +717,7 @@ test.describe('the explanation pane', () => {
       window.__KV.boot();
     });
     await page.locator('.kv-ai').click();
-    await expect(page.locator('.kv-aitext')).toContainText('hands dominate');
+    await expect(page.locator('.kv-gen p')).toContainText('hands dominate');
     await expect(page.locator('.kv-aierr')).toHaveCount(0);
   });
 
