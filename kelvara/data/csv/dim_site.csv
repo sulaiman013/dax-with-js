@@ -1,0 +1,9 @@
+SiteKey,SiteCode,SiteName,Country,Regime,BusinessUnit,Region,HeadcountBase
+1,VLI,Vlissingen,NL,Arbowet,Structural Steel Fabrication,Europe,560
+2,BOT,Rotterdam-Botlek,NL,Arbowet,Port Bulk Terminals,Europe,720
+3,TEE,Teesside,UK,RIDDOR,Petrochemical Turnaround,Europe,480
+4,PGU,Pasir Gudang,MY,OSHA 1994,Structural Steel Fabrication,Asia,640
+5,KER,Kerteh,MY,OSHA 1994,Petrochemical Turnaround,Asia,430
+6,JEB,Jebel Ali,AE,UAE Federal,Port Bulk Terminals,Middle East,690
+7,RAS,Ras Laffan,QA,Qatar Labour,Petrochemical Turnaround,Middle East,520
+8,PAR,Port Arthur,US,29 CFR 1904,Mining Materials Handling,Americas,360

@@ -1,0 +1,7 @@
+SeverityKey,SeverityClass,IsRecordable,IsDart,IsLostTime,Note
+1,First aid only,0,0,0,Not recordable under 1904.7
+2,Medical treatment,1,0,0,"Recordable, no days away or restriction"
+3,Restricted work or transfer,1,1,0,"DART, job transfer or restricted duty"
+4,Days away from work,1,1,1,DART and lost time
+5,Significant injury,1,1,1,"Recordable under 1904.7(b)(7), none in period"
+6,Fatality,1,1,1,None in period

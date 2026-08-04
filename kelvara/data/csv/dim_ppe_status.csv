@@ -1,0 +1,6 @@
+PpeStatusKey,PpeStatus,BaseShare
+1,"Worn, correct specification",0.58
+2,"Worn, wrong specification",0.09
+3,"Not worn, available",0.13
+4,"Not worn, not available",0.05
+5,Not applicable to task,0.15

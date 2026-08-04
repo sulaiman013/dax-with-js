@@ -1,0 +1,21 @@
+MechanismKey,OiicsCode,Mechanism
+1,11,Struck against stationary object
+2,12,Struck by falling object
+3,13,Struck by swinging or slipping object
+4,14,Caught in running equipment
+5,15,Caught in or crushed by shifting objects
+6,16,Rubbed or abraded by friction
+7,21,Overexertion in lifting or lowering
+8,22,Overexertion in pushing or pulling
+9,23,Overexertion in holding or carrying
+10,24,Repetitive motion
+11,25,Awkward posture
+12,31,"Fall on same level, slip or trip"
+13,32,Fall to lower level
+14,41,Contact with electric current
+15,42,Contact with temperature extreme
+16,43,Contact with chemical or allergenic substance
+17,44,Exposure to noise
+18,45,Exposure to air pressure change
+19,51,"Struck by powered vehicle, non-collision"
+20,61,"Contact with sharp object, cut or pierce"

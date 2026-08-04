@@ -1,0 +1,13 @@
+JobRoleKey,JobRole,RoleFamily,HourShare
+1,Welder,Fabrication,0.13
+2,Fitter,Fabrication,0.11
+3,Rigger,Lifting,0.08
+4,Crane operator,Lifting,0.04
+5,Scaffolder,Access,0.07
+6,Insulation technician,Access,0.05
+7,Process operator,Operations,0.12
+8,Mechanical technician,Maintenance,0.1
+9,Electrical technician,Maintenance,0.06
+10,Materials handler,Logistics,0.13
+11,Plant driver,Logistics,0.06
+12,HSE advisor,Support,0.05

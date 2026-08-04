@@ -1,0 +1,15 @@
+NatureKey,OiicsCode,Nature
+1,01,Laceration or cut
+2,02,Puncture
+3,03,Abrasion
+4,04,Bruise or contusion
+5,05,Fracture
+6,06,Dislocation
+7,07,Sprain or strain
+8,08,Tendonitis
+9,09,Amputation
+10,10,"Burn, heat"
+11,11,"Burn, chemical"
+12,12,Foreign body in eye
+13,13,Hearing loss or tinnitus
+14,14,Crushing injury

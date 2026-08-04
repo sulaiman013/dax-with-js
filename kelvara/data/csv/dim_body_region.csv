@@ -1,0 +1,31 @@
+BodyRegionKey,OiicsCode,BodyRegion,Division,IsDrawable,IsBilateral,SvgId
+1,11,Skull,Head,1,0,skull
+2,12,Ear,Head,1,1,ear
+3,132,Eye,Head,1,1,eye
+4,133,Nose,Head,1,0,nose
+5,13,Face,Head,1,0,face
+6,134,Mouth and jaw,Head,1,0,jaw
+7,2,Neck,Neck,1,0,neck
+8,31,Chest,Trunk,1,0,chest
+9,32U,Upper back,Trunk,1,0,upperback
+10,32L,Lower back,Trunk,1,0,lowerback
+11,33,Abdomen,Trunk,1,0,abdomen
+12,34,Pelvis and hip,Trunk,1,0,pelvis
+13,344,Groin,Trunk,1,0,groin
+14,343,Buttock,Trunk,1,0,buttock
+15,41,Shoulder,Upper extremity,1,1,shoulder
+16,421,Upper arm,Upper extremity,1,1,upperarm
+17,422,Elbow,Upper extremity,1,1,elbow
+18,423,Forearm,Upper extremity,1,1,forearm
+19,43,Wrist,Upper extremity,1,1,wrist
+20,441,Hand,Upper extremity,1,1,hand
+21,442,Fingers and thumb,Upper extremity,1,1,fingers
+22,511,Thigh,Lower extremity,1,1,thigh
+23,512,Knee,Lower extremity,1,1,knee
+24,513,Lower leg,Lower extremity,1,1,lowerleg
+25,52,Ankle,Lower extremity,1,1,ankle
+26,53,Foot,Lower extremity,1,1,foot
+27,532,Toes,Lower extremity,1,1,toes
+28,6,Body systems,Not drawable,0,0,
+29,8,Multiple body parts,Not drawable,0,0,
+30,9,Nonclassifiable,Not drawable,0,0,
