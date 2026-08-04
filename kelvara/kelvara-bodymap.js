@@ -103,9 +103,18 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
      and touching localStorage there throws rather than returning null.
      Multi-select dimensions are objects used as sets; empty means "all". */
   var KV = window.__KV || (window.__KV = {
-    state: { region: null, sev: null, site: {}, bu: {}, shift: {}, wclass: {}, year: {} },
+    state: {
+      region: null, sev: null,
+      site: {}, bu: {}, shift: {}, wclass: {}, year: {}, mech: {}, role: {}
+    },
     frame: 0
   });
+
+  /* Every set-valued dimension, in one place. Used by clear-all, by the
+     key-coercion in the click handler and by the "any filter active" test, so
+     adding a filterable panel means touching this list and nothing else. */
+  var SETS = ['site', 'bu', 'shift', 'wclass', 'year', 'mech', 'role'];
+  var NUMERIC_SETS = { site: 1, shift: 1, wclass: 1, year: 1, mech: 1, role: 1 };
 
   function anyOn(set) {
     for (var k in set) if (set[k]) return true;
@@ -155,27 +164,38 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       out.hours += h[i + 4];
     }
 
+    /* Cross-highlighting, the way a native visual behaves: a panel ignores its
+       OWN selection and honours every other one. Click "Welder" and the roles
+       panel still lists every role with Welder marked, while the map, the KPIs
+       and the other panels narrow to Welder. Without the self-exclusion, one
+       click would blank the panel you just clicked and leave you no way back
+       except the clear button. */
     for (var j = 0; j < f.length; j += F) {
       var rk = f[j], sk = f[j + 1], ymk = f[j + 2], site = f[j + 3];
-      var da = f[j + 8], dr = f[j + 9];
+      var mech = f[j + 6], role = f[j + 7], da = f[j + 8], dr = f[j + 9];
 
-      /* Bar filters first. These apply to everything, including the map. */
-      if (!passes(st.year, Math.floor(ymk / 100)) || !passes(st.site, site)) continue;
+      /* Dimensions with no panel of their own: they gate everything. */
+      if (!passes(st.year, Math.floor(ymk / 100))) continue;
       if (!passes(st.bu, buOf[site])) continue;
       if (!passes(st.shift, f[j + 4]) || !passes(st.wclass, f[j + 5])) continue;
 
-      monthSet[ymk] = true;
+      var pSite = passes(st.site, site);
+      var pSev = st.sev == null || st.sev === sk;
+      var pRegion = st.region == null || st.region === rk;
+      var pMech = passes(st.mech, mech);
+      var pRole = passes(st.role, role);
+
+      if (pSite && pSev && pRegion && pMech && pRole) monthSet[ymk] = true;
+
+      if (pSite && pSev && pMech && pRole) out.byRegion[rk] = (out.byRegion[rk] || 0) + 1;
+      if (pSite && pRegion && pMech && pRole) out.bySev[sk] = (out.bySev[sk] || 0) + 1;
+      if (pSev && pRegion && pMech && pRole) out.bySite[site] = (out.bySite[site] || 0) + 1;
+      if (pSite && pSev && pRegion && pRole) out.byMech[mech] = (out.byMech[mech] || 0) + 1;
+      if (pSite && pSev && pRegion && pMech) out.byRole[role] = (out.byRole[role] || 0) + 1;
+
+      if (!(pSite && pSev && pRegion && pMech && pRole)) continue;
+
       var sev = window.KV_SEV[sk] || {};
-      var keepRegion = st.region == null || st.region === rk;
-      var keepSev = st.sev == null || st.sev === sk;
-
-      /* The map itself always shows every region, otherwise selecting one
-         would blank the other twenty-six and the map would stop being a map.
-         It respects a severity selection but never a region selection. */
-      if (keepSev) out.byRegion[rk] = (out.byRegion[rk] || 0) + 1;
-      if (!keepRegion) out.bySev[sk] = out.bySev[sk] || 0;
-      if (!keepRegion || !keepSev) continue;
-
       out.cases += 1;
       out.daysAway += da;
       out.daysRestricted += dr;
@@ -183,12 +203,15 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       if (sev.dart) out.dart += 1;
       if (sev.lost) out.lost += 1;
       if (!sev.rec) out.firstAid += 1;
-      out.bySev[sk] = (out.bySev[sk] || 0) + 1;
       out.byMonth[ymk] = (out.byMonth[ymk] || 0) + 1;
-      out.bySite[site] = (out.bySite[site] || 0) + 1;
-      out.byMech[f[j + 6]] = (out.byMech[f[j + 6]] || 0) + 1;
-      out.byRole[f[j + 7]] = (out.byRole[f[j + 7]] || 0) + 1;
     }
+
+    /* Exposure has no region, severity, mechanism or job-role grain, so those
+       four filters cannot narrow the denominator. Say so on the rate cards
+       rather than printing a rate that silently mixes a filtered numerator
+       with an unfiltered one. */
+    out.partialDenominator =
+      st.region != null || st.sev != null || anyOn(st.mech) || anyOn(st.role);
 
     out.months = Object.keys(monthSet).map(Number).sort(function (a, b) { return a - b; });
 
@@ -219,28 +242,54 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
 
   /* --------------------------------------------------------------- panels */
 
-  function bars(title, rows, total, colour) {
+  /* `key` names the state set this panel drives. Rows carry data-fk/data-fv,
+     which is the same contract the filter-bar chips use, so one delegated
+     handler on the root serves both and there is no second code path to keep
+     in step. */
+  /* `total` is the panel's OWN universe, not the page's case count. A panel
+     that excludes its own selection holds rows outside the current filter, so
+     dividing by the filtered total made the clicked row read 100% and its
+     neighbours 97%, which is nonsense: those cases are not in the selection. */
+  function bars(title, rows, total, colour, key) {
     if (!rows.length) {
       return '<div class="kv-panel"><h3>' + esc(title) +
              '</h3><p class="kv-empty">No cases in the current selection.</p></div>';
     }
-    var max = rows[0][1] || 1;
-    var html = '<div class="kv-panel"><h3>' + esc(title) + '</h3><ul class="kv-bars">';
+    var sel = (key && KV.state[key]) || {};
+    var max = rows[0][2] || 1;
+    var html = '<div class="kv-panel"><h3>' + esc(title) +
+               (key ? '<span class="kv-h3n">click to filter</span>' : '') +
+               '</h3><ul class="kv-bars' + (key ? ' kv-click' : '') + '">';
     rows.forEach(function (row) {
-      var pct = total ? (row[1] / total) * 100 : 0;
-      html += '<li><span class="kv-bl">' + esc(row[0]) + '</span>' +
-              '<span class="kv-bt"><i style="width:' + ((row[1] / max) * 100).toFixed(1) +
+      var pct = total ? (row[2] / total) * 100 : 0;
+      var on = !!sel[row[0]];
+      html += '<li' + (key ? ' data-fk="' + key + '" data-fv="' + esc(row[0]) +
+              '" role="button" tabindex="0" aria-pressed="' + on + '"' : '') +
+              (on ? ' class="on"' : '') + '>' +
+              '<span class="kv-bl">' + esc(row[1]) + '</span>' +
+              '<span class="kv-bt"><i style="width:' + ((row[2] / max) * 100).toFixed(1) +
               '%;background:' + colour + '"></i></span>' +
-              '<span class="kv-bv">' + num(row[1]) +
+              '<span class="kv-bv">' + num(row[2]) +
               '<em>' + dec(pct, 0) + '%</em></span></li>';
     });
     return html + '</ul></div>';
   }
 
+  /* [key, label, count], sorted, top n. The key is kept so a row can drive a
+     selection; carrying only the label would mean matching on display text. */
+  function sumOf(map) {
+    var t = 0;
+    for (var k in map) t += map[k];
+    return t;
+  }
+
   function topRows(map, lookup, n) {
     return Object.keys(map)
-      .map(function (k) { return [(lookup[k] || {}).name || lookup[k] || ('#' + k), map[k]]; })
-      .sort(function (a, b) { return b[1] - a[1]; })
+      .map(function (k) {
+        var v = lookup[k];
+        return [k, (v && v.name) || v || ('#' + k), map[k]];
+      })
+      .sort(function (a, b) { return b[2] - a[2]; })
       .slice(0, n);
   }
 
@@ -445,9 +494,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
         return [y, y];
       }), st.year);
 
-    var any = ['site', 'bu', 'shift', 'wclass', 'year'].some(function (k) {
-      return anyOn(st[k]);
-    }) || st.region != null || st.sev != null;
+    var any = SETS.some(function (k) { return anyOn(st[k]); }) ||
+              st.region != null || st.sev != null;
 
     return '<div class="kv-bar">' +
       '<div class="kv-brow">' + row1 +
@@ -459,14 +507,22 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
   /* ------------------------------------------------------------------ KPI */
 
   function kpis(agg, meta) {
-    var reportable = agg.hours >= (meta.minHours || 0);
+    var reportable = agg.hours > 0;
+    /* Exposure is recorded by site, shift, worker class and month. It has no
+       region, severity, mechanism or role grain, so under those filters the
+       numerator narrows and the denominator cannot. The rate is still the
+       honest share-of-total-exposure figure, but the card has to say so. */
+    var per = agg.partialDenominator ? 'per 200,000 hours, all exposure'
+                                     : 'per 200,000 hours';
     var cards = [
       ['Cases', num(agg.cases), 'all severities'],
       ['Recordable', num(agg.recordable), dec(agg.cases ? (agg.recordable / agg.cases) * 100 : 0, 0) + '% of cases'],
-      ['TRIR', reportable ? dec(agg.trir) : '—', 'per 200,000 hours'],
-      ['DART rate', reportable ? dec(agg.dartRate) : '—', 'per 200,000 hours'],
+      ['TRIR', reportable ? dec(agg.trir) : '—', per],
+      ['DART rate', reportable ? dec(agg.dartRate) : '—', per],
       ['Days away', num(agg.daysAway), num(agg.lost) + ' lost-time cases'],
-      ['Severity rate', reportable ? dec(agg.severityRate, 1) : '—', 'days per 200,000 hours']
+      ['Severity rate', reportable ? dec(agg.severityRate, 1) : '—',
+       agg.partialDenominator ? 'days per 200,000 hours, all exposure'
+                              : 'days per 200,000 hours']
     ];
     return '<div class="kv-kpis">' + cards.map(function (c) {
       return '<div class="kv-kpi"><span class="kv-kl">' + esc(c[0]) +
@@ -482,11 +538,19 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     var meta = p.meta || {};
 
     var chip = '';
-    if (KV.state.region != null || KV.state.sev != null) {
-      var bits = [];
-      if (KV.state.region != null) bits.push(regionName(KV.state.region));
-      if (KV.state.sev != null) bits.push((window.KV_SEV[KV.state.sev] || {}).name || '');
-      chip = '<button class="kv-chip" data-clear="1">' + esc(bits.join(' · ')) +
+    var bits = [];
+    if (KV.state.region != null) bits.push(regionName(KV.state.region));
+    if (KV.state.sev != null) bits.push((window.KV_SEV[KV.state.sev] || {}).name || '');
+    [['mech', window.KV_MECH], ['role', window.KV_ROLE], ['site', window.KV_SITE]]
+      .forEach(function (pair) {
+        Object.keys(KV.state[pair[0]] || {}).forEach(function (k) {
+          if (KV.state[pair[0]][k]) bits.push(pair[1][k] || k);
+        });
+      });
+    if (bits.length) {
+      chip = '<button class="kv-chip" data-clear="1">' +
+             esc(bits.slice(0, 3).join(' · ')) +
+             (bits.length > 3 ? ' +' + (bits.length - 3) : '') +
              ' <span aria-hidden="true">×</span></button>';
     }
 
@@ -495,11 +559,15 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     }).filter(function (r) { return r.n > 0; })
       .sort(function (a, b) { return b.n - a.n; });
 
-    var sevHtml = '<div class="kv-panel"><h3>Severity mix</h3><ul class="kv-bars kv-sev">' +
+    var sevTotal = sumOf(agg.bySev);
+    var sevHtml = '<div class="kv-panel"><h3>Severity mix' +
+      '<span class="kv-h3n">click to filter</span></h3>' +
+      '<ul class="kv-bars kv-sev">' +
       (sevRows.length ? sevRows.map(function (r) {
-        var pct = agg.cases ? (r.n / agg.cases) * 100 : 0;
+        var pct = sevTotal ? (r.n / sevTotal) * 100 : 0;
         var on = KV.state.sev === r.k;
-        return '<li data-sev="' + r.k + '" class="' + (on ? 'on' : '') + '">' +
+        return '<li data-sev="' + r.k + '" role="button" tabindex="0" aria-pressed="' +
+               on + '" class="' + (on ? 'on' : '') + '">' +
                '<span class="kv-bl">' + esc(r.name) + '</span>' +
                '<span class="kv-bt"><i style="width:' + pct.toFixed(1) +
                '%;background:' + PALETTE.accent2 + '"></i></span>' +
@@ -528,11 +596,14 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
           unmapped(agg) +
         '</div>' +
         '<div class="kv-side kv-col2">' + sevHtml +
-          bars('Cases by site', topRows(agg.bySite, window.KV_SITE, 8), agg.cases, PALETTE.warn) +
+          bars('Cases by site', topRows(agg.bySite, window.KV_SITE, 8),
+               sumOf(agg.bySite), PALETTE.warn, 'site') +
         '</div>' +
         '<div class="kv-side kv-col3">' +
-          bars('Top mechanisms', topRows(agg.byMech, window.KV_MECH, 8), agg.cases, PALETTE.accent) +
-          bars('Most exposed roles', topRows(agg.byRole, window.KV_ROLE, 8), agg.cases, PALETTE.good) +
+          bars('Top mechanisms', topRows(agg.byMech, window.KV_MECH, 8),
+               sumOf(agg.byMech), PALETTE.accent, 'mech') +
+          bars('Most exposed roles', topRows(agg.byRole, window.KV_ROLE, 8),
+               sumOf(agg.byRole), PALETTE.good, 'role') +
         '</div>' +
         trend(agg) +
       '</div>';
@@ -562,9 +633,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
         if (clear) {
           KV.state.region = null;
           KV.state.sev = null;
-          ['site', 'bu', 'shift', 'wclass', 'year'].forEach(function (k) {
-            KV.state[k] = {};
-          });
+          SETS.forEach(function (k) { KV.state[k] = {}; });
           return schedule(root, window.__kvBody);
         }
         var fchip = e.target.closest('[data-fk]');
@@ -574,8 +643,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
           /* Keys arrive from the DOM as strings. The payload holds numbers, so
              site/shift/worker comparisons must be coerced or every chip would
              silently match nothing. Business unit and year stay strings. */
-          var kk = (fk === 'site' || fk === 'shift' || fk === 'wclass' || fk === 'year')
-            ? Number(fv) : fv;
+          var kk = NUMERIC_SETS[fk] ? Number(fv) : fv;
           if (KV.state[fk][kk]) delete KV.state[fk][kk];
           else KV.state[fk][kk] = true;
           return schedule(root, window.__kvBody);
@@ -603,12 +671,20 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
         }
       });
       root.addEventListener('keydown', function (e) {
+        /* Rows are role="button" and focusable, so Enter and Space must do what
+           a click does; otherwise the panels are mouse-only. */
+        if (e.key === 'Enter' || e.key === ' ') {
+          var b = e.target.closest('[data-fk],[data-sev]');
+          if (b) {
+            e.preventDefault();
+            b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            return;
+          }
+        }
         if (e.key === 'Escape') {
           KV.state.region = null;
           KV.state.sev = null;
-          ['site', 'bu', 'shift', 'wclass', 'year'].forEach(function (k) {
-            KV.state[k] = {};
-          });
+          SETS.forEach(function (k) { KV.state[k] = {}; });
           schedule(root, window.__kvBody);
         }
       });

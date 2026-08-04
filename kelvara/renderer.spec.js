@@ -371,6 +371,144 @@ test.describe('the JS filter bar', () => {
   });
 });
 
+test.describe('panel cross-filtering', () => {
+  const PANELS = [
+    ['mech', 'Top mechanisms'],
+    ['role', 'Most exposed roles'],
+    ['site', 'Cases by site']
+  ];
+
+  for (const [key, title] of PANELS) {
+    test(`${title}: a row filters the whole page`, async ({ page }) => {
+      await open(page);
+      const row = page.locator(`.kv-bars li[data-fk="${key}"]`).first();
+      const own = await row.locator('.kv-bv').evaluate(
+        (el) => Number(el.firstChild.textContent.replace(/[^0-9]/g, '')));
+
+      await row.click();
+      await expect(page.locator(`li[data-fk="${key}"].on`)).toHaveCount(1);
+
+      const k = await kpis(page);
+      expect(n(k['Cases'].value), 'cases must narrow to the clicked row').toBe(own);
+      expect(own).toBeLessThan(EXP.all.cases);
+    });
+
+    test(`${title}: the clicked panel keeps showing every row`, async ({ page }) => {
+      /* Native cross-highlighting leaves the source visual intact and marks the
+         selection. If a panel filtered itself, one click would collapse it to a
+         single row and there would be no way back except Clear all. */
+      await open(page);
+      const before = await page.locator(`.kv-bars li[data-fk="${key}"]`).count();
+      await page.locator(`.kv-bars li[data-fk="${key}"]`).first().click();
+      await settle(page);
+      const after = await page.locator(`.kv-bars li[data-fk="${key}"]`).count();
+      expect(after, 'the source panel must not collapse').toBe(before);
+      await expect(page.locator(`li[data-fk="${key}"]`).first())
+        .toHaveAttribute('aria-pressed', 'true');
+    });
+
+    test(`${title}: rows are additive and toggle off`, async ({ page }) => {
+      await open(page);
+      const rows = page.locator(`.kv-bars li[data-fk="${key}"]`);
+      await rows.nth(0).click();
+      const one = n((await kpis(page))['Cases'].value);
+      await rows.nth(1).click();
+      await expect(page.locator(`li[data-fk="${key}"].on`)).toHaveCount(2);
+      const two = n((await kpis(page))['Cases'].value);
+      expect(two).toBeGreaterThan(one);
+      await rows.nth(1).click();
+      await expect(page.locator(`li[data-fk="${key}"].on`)).toHaveCount(1);
+      expect(n((await kpis(page))['Cases'].value)).toBe(one);
+    });
+  }
+
+  test('panel percentages stay sane when that panel is the one selected', async ({ page }) => {
+    /* A self-excluded panel holds rows outside the current filter, so its
+       percentages must divide by its own universe. Dividing by the page's
+       filtered case count made the clicked row read 100% and its neighbours
+       97%, of a set they are not in. */
+    await open(page);
+    await page.locator('.kv-bars li[data-fk="role"]').first().click();
+    await settle(page);
+    const pcts = await page.$$eval('li[data-fk="role"] .kv-bv em',
+      (els) => els.map((e) => Number(e.textContent.replace(/[^0-9]/g, ''))));
+    expect(pcts.length).toBeGreaterThan(1);
+    expect(Math.max(...pcts), 'no row may claim the entire filtered set').toBeLessThan(60);
+    expect(pcts.reduce((a, b) => a + b, 0), 'shares must not exceed 100')
+      .toBeLessThanOrEqual(101);
+  });
+
+  test('a site row and the site chip drive the same selection', async ({ page }) => {
+    await open(page);
+    await page.locator('.kv-bars li[data-fk="site"]').first().click();
+    await settle(page);
+    const viaRow = await page.evaluate(() => JSON.stringify(window.__KV.state.site));
+    await page.locator('.kv-reset').click();
+    await settle(page);
+    const key = JSON.parse(viaRow);
+    await page.locator(`.kv-f[data-fk="site"][data-fv="${Object.keys(key)[0]}"]`).click();
+    await settle(page);
+    const viaChip = await page.evaluate(() => JSON.stringify(window.__KV.state.site));
+    expect(viaChip).toBe(viaRow);
+  });
+
+  test('rate cards admit when the denominator could not follow', async ({ page }) => {
+    /* Exposure has no mechanism grain, so filtering to one mechanism narrows
+       the numerator and cannot narrow the hours. The card has to say so rather
+       than print a rate that quietly mixes the two. */
+    await open(page);
+    let k = await kpis(page);
+    expect(k['TRIR'].sub).toBe('per 200,000 hours');
+
+    await page.locator('.kv-bars li[data-fk="mech"]').first().click();
+    k = await kpis(page);
+    expect(k['TRIR'].sub).toBe('per 200,000 hours, all exposure');
+
+    /* A site filter DOES have an exposure counterpart, so no caveat. */
+    await page.locator('.kv-reset').click();
+    await page.locator('.kv-bars li[data-fk="site"]').first().click();
+    k = await kpis(page);
+    expect(k['TRIR'].sub).toBe('per 200,000 hours');
+  });
+
+  test('clear all resets panel selections too', async ({ page }) => {
+    await open(page);
+    for (const key of ['mech', 'role', 'site']) {
+      await page.locator(`.kv-bars li[data-fk="${key}"]`).first().click();
+    }
+    await settle(page);
+    expect(await page.locator('.kv-bars li.on').count()).toBe(3);
+    await page.locator('.kv-reset').click();
+    await settle(page);
+    expect(await page.locator('.kv-bars li.on').count()).toBe(0);
+    expect(n((await kpis(page))['Cases'].value)).toBe(EXP.all.cases);
+  });
+
+  test('rows are reachable and activatable from the keyboard', async ({ page }) => {
+    await open(page);
+    const row = page.locator('.kv-bars li[data-fk="role"]').first();
+    await expect(row).toHaveAttribute('tabindex', '0');
+    await row.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('li[data-fk="role"].on')).toHaveCount(1);
+  });
+
+  test('a panel selection composes with a region selection', async ({ page }) => {
+    await open(page);
+    await page.locator('.kv-bars li[data-fk="role"]').first().click();
+    const roleOnly = n((await kpis(page))['Cases'].value);
+    await page.evaluate((rk) => {
+      const svg = Object.keys(window.KV_SVG_TO_KEY)
+        .find((k) => window.KV_SVG_TO_KEY[k].includes(rk));
+      document.querySelector('#kv-figure path[data-region="' + svg + '"]').dispatchEvent(
+        new MouseEvent('click', { bubbles: true }));
+    }, EXP.topRegion);
+    const both = n((await kpis(page))['Cases'].value);
+    expect(both).toBeLessThan(roleOnly);
+    expect(both).toBeGreaterThan(0);
+  });
+});
+
 test.describe('rendered figure geometry', () => {
   test('the shipped figure still satisfies the placement rules', async ({ page }) => {
     /* The geometry suite runs against the design-time preview. This runs the

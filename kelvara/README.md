@@ -32,6 +32,21 @@ must filter the cases and leave the hours alone, or a region would appear to
 have a worse TRIR purely for being selected. Selecting a *site* must filter
 both. Both rules are asserted in the test suite.
 
+Exposure is recorded by site, shift, worker class and month, so a region,
+severity, mechanism or role selection narrows the numerator and cannot narrow
+the denominator. The rate cards say **"per 200,000 hours, all exposure"** when
+that is the case, rather than printing a figure that quietly mixes a filtered
+numerator with an unfiltered one.
+
+**Every panel cross-filters, the way a native visual does.** Body regions,
+severity, site, mechanism and role are all clickable, additive within a group,
+and combine across groups. A panel ignores its OWN selection and honours every
+other one, so clicking *Welder* leaves the roles panel listing every role with
+Welder marked while the map, the KPIs and the other panels narrow. Percentages
+inside a self-excluded panel divide by that panel's own universe: dividing by
+the page's filtered case count made the clicked row read 100% and its
+neighbours 97%, of a set they are not in.
+
 ---
 
 ## Files
@@ -47,7 +62,7 @@ both. Both rules are asserted in the test suite.
 | [`preview-page.html`](preview-page.html) | The whole page, offline. Open it in a browser, no server needed. |
 | [`preview-figure.html`](preview-figure.html) | Just the figure, for working on the geometry. |
 | [`anatomy.spec.js`](anatomy.spec.js) | 25 geometry tests. |
-| [`renderer.spec.js`](renderer.spec.js) | 25 renderer tests. |
+| [`renderer.spec.js`](renderer.spec.js) | 40 renderer tests. |
 | [`mutate.py`](mutate.py) | Injects real defects to prove the suite can fail. |
 | [`data/generate_data.py`](data/generate_data.py) | The seeded generator. Rebuilds every CSV from scratch, and asserts its own targets. |
 | [`data/csv/`](data/csv/) | The 16 generated tables. Synthetic, seed 42. |
@@ -131,7 +146,7 @@ python make_fixture.py             # build preview-page.html + the oracle
 npx playwright test
 ```
 
-50 tests in two suites.
+65 tests in two suites.
 
 **`anatomy.spec.js`** holds the figure to its placement rules: all 27 regions
 present on the right views, sub-regions inside their parents, extremities
@@ -140,7 +155,7 @@ overlapping, paired limbs mirrored, vertical order anatomically correct, labels
 not colliding or covering a neighbour, and every region exposing at least one
 clickable pixel.
 
-**`renderer.spec.js`** checks the numbers against an oracle computed a second
+**`renderer.spec.js`** exercises every filter path and checks the numbers against an oracle computed a second
 time, separately, straight off the raw CSV rows, so an aggregation mistake would
 have to be made twice in two different shapes to pass. It also asserts the
 denominator rules above, that the page fits 1920x1080 with nothing cut off, and
