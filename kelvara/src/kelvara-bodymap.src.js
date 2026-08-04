@@ -276,7 +276,7 @@
        preserveAspectRatio="none" into a 520px column, which squashed every
        label horizontally to about a third of its width and made the axis
        unreadable. */
-    var W = 1078, H = 176, L = 38, R = 12, T = 12, B = 28;
+    var W = 512, H = 186, L = 34, R = 10, T = 12, B = 28;
     var ms = agg.months;
     if (ms.length < 2) {
       return '<div class="kv-panel kv-trend"><h3>Monthly cases</h3>' +
@@ -297,7 +297,7 @@
 
     /* Thin the axis to whole labels rather than drawing every month and
        letting them overlap into a grey smear. */
-    var every = Math.max(1, Math.ceil(ms.length / 12));
+    var every = Math.max(1, Math.ceil(ms.length / 5));
     var ticks = '';
     ms.forEach(function (m, i) {
       if (i % every) return;
@@ -415,6 +415,159 @@
                (KV.state.region === +k ? ' on' : '') + '">' +
                esc(regionName(k)) + ' <b>' + num(agg.unmapped[k]) + '</b></button>';
       }).join('') + '</div>';
+  }
+
+  /* ------------------------------------------------------------- narrative */
+
+  /* Everything the explanation pane says is computed from the same numbers the
+     panels are drawn from, so the prose cannot drift from the chart above it.
+     No network, no key, no latency: it is correct in the Service on first
+     paint and it is correct offline. The optional model layer below enriches
+     this, it does not replace it. */
+
+  var EMPTY_STATE = {
+    region: null, sev: null,
+    site: {}, bu: {}, shift: {}, wclass: {}, year: {}, mech: {}, role: {}
+  };
+
+  /* The unfiltered picture, so a selection can be described as more or less
+     severe than normal rather than just stated. Cached against the payload
+     object: a new measure evaluation brings a new object and invalidates it. */
+  function baseline(p) {
+    if (KV.baseFor !== p) {
+      KV.baseFor = p;
+      KV.base = aggregate(p, EMPTY_STATE);
+    }
+    return KV.base;
+  }
+
+  function pct(a, b) {
+    return b ? (a / b) * 100 : 0;
+  }
+
+  function topOf(map, lookup) {
+    var best = null;
+    for (var k in map) {
+      if (!best || map[k] > best.n) {
+        var v = lookup[k];
+        best = { k: k, name: (v && v.name) || v || ('#' + k), n: map[k] };
+      }
+    }
+    return best;
+  }
+
+  /* What the user has actually chosen, in words. */
+  function selectionLabel(st) {
+    var bits = [];
+    if (st.region != null) bits.push(regionName(st.region));
+    if (st.sev != null) bits.push((window.KV_SEV[st.sev] || {}).name || '');
+    [['mech', window.KV_MECH], ['role', window.KV_ROLE], ['site', window.KV_SITE],
+     ['shift', window.KV_SHIFT], ['wclass', window.KV_WCLASS]].forEach(function (pair) {
+      Object.keys(st[pair[0]] || {}).forEach(function (k) {
+        if (st[pair[0]][k]) bits.push(pair[1][k] || k);
+      });
+    });
+    Object.keys(st.bu || {}).forEach(function (k) { if (st.bu[k]) bits.push(k); });
+    Object.keys(st.year || {}).forEach(function (k) { if (st.year[k]) bits.push(k); });
+    return bits;
+  }
+
+  function narrate(agg, base, st) {
+    var out = [];
+    var sel = selectionLabel(st);
+    var scoped = sel.length > 0;
+
+    if (!agg.cases) {
+      return { title: 'Nothing selected matches',
+               lines: ['No cases fall inside the current filters. Clear one to see data again.'] };
+    }
+
+    /* 1. Scope and size. */
+    if (scoped) {
+      out.push('<b>' + esc(sel.join(' and ')) + '</b> covers <b>' + num(agg.cases) +
+               '</b> cases, ' + dec(pct(agg.cases, base.cases), 1) + '% of the ' +
+               num(base.cases) + ' recorded in the period.');
+    } else {
+      out.push('<b>' + num(agg.cases) + '</b> cases across ' +
+               num(Object.keys(agg.bySite).length) + ' sites and ' +
+               num(agg.months.length) + ' months, against ' +
+               num(agg.hours) + ' hours worked.');
+    }
+
+    /* 2. Severity, compared with normal. A raw recordable count says nothing
+          on its own; the comparison is what makes it a finding. */
+    var mine = pct(agg.recordable, agg.cases);
+    var norm = pct(base.recordable, base.cases);
+    var gap = mine - norm;
+    var verdict = Math.abs(gap) < 2 ? 'about the usual rate'
+      : (gap > 0 ? 'higher than the ' + dec(norm, 0) + '% seen overall'
+                 : 'lower than the ' + dec(norm, 0) + '% seen overall');
+    out.push('<b>' + num(agg.recordable) + '</b> were recordable, ' +
+             dec(mine, 0) + '% of the selection, ' + verdict + '.');
+
+    /* 3. What is driving it. */
+    var m = topOf(agg.byMech, window.KV_MECH);
+    var r = topOf(agg.byRole, window.KV_ROLE);
+    if (m) {
+      var driver = 'Most often the cause is <b>' + esc(m.name.toLowerCase()) +
+                   '</b> (' + num(m.n) + ' cases)';
+      if (r) driver += ', and <b>' + esc(r.name.toLowerCase()) +
+                       's</b> are the most affected role (' + num(r.n) + ').';
+      else driver += '.';
+      out.push(driver);
+    }
+
+    /* 4. What it cost. */
+    if (agg.lost) {
+      out.push('<b>' + num(agg.lost) + '</b> cases put someone off work, costing <b>' +
+               num(agg.daysAway) + '</b> days, an average of ' +
+               dec(agg.daysAway / agg.lost, 1) + ' days per lost-time case.');
+    } else {
+      out.push('No case here cost a day away from work' +
+               (agg.daysRestricted ? ', though ' + num(agg.daysRestricted) +
+                ' days of restricted duty were recorded.' : '.'));
+    }
+
+    /* 5. Direction of travel. Half against half, which is blunt but honest;
+          six points a side is too few for anything cleverer to mean much. */
+    var ms = agg.months;
+    if (ms.length >= 6) {
+      var half = Math.floor(ms.length / 2);
+      var older = 0, newer = 0;
+      ms.forEach(function (mm, i) {
+        var v = agg.byMonth[mm] || 0;
+        if (i < half) older += v; else newer += v;
+      });
+      var move = pct(newer - older, older || 1);
+      var word = Math.abs(move) < 10 ? 'broadly flat'
+        : (move > 0 ? 'rising' : 'falling');
+      out.push('The trend is <b>' + word + '</b>: ' + num(newer) +
+               ' cases in the recent half against ' + num(older) + ' in the earlier.');
+    }
+
+    /* 6. The caveat, if one applies. Better said here than discovered later. */
+    if (agg.partialDenominator) {
+      out.push('<i>Rates divide by total exposure: hours carry no region, ' +
+               'severity, mechanism or role grain, so this filter narrows the ' +
+               'cases but cannot narrow the hours.</i>');
+    }
+
+    return { title: scoped ? sel.join(' and ') : 'The period in full', lines: out };
+  }
+
+  function explainPanel(p, agg) {
+    var n = narrate(agg, baseline(p), KV.state);
+    var ai = window.__kvAI && window.__kvAI.key;
+    var cached = KV.aiText && KV.aiKey === stateKey();
+    return '<div class="kv-panel kv-explain"><h3>What this shows' +
+      (ai ? '<button class="kv-ai" data-ai="1"' + (KV.aiBusy ? ' disabled' : '') + '>' +
+        (KV.aiBusy ? 'Thinking…' : (cached ? 'Regenerate' : 'Ask the model')) +
+        '</button>' : '<span class="kv-h3n">updates with every selection</span>') +
+      '</h3><div class="kv-ex"><p class="kv-exh">' + esc(n.title) + '</p>' +
+      n.lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+      (cached ? '<p class="kv-aitext">' + esc(KV.aiText) + '</p>' : '') +
+      (KV.aiErr ? '<p class="kv-aierr">' + esc(KV.aiErr) + '</p>' : '') +
+      '</div></div>';
   }
 
   /* ----------------------------------------------------------- filter bar */
@@ -580,6 +733,7 @@
                sumOf(agg.byRole), PALETTE.good, 'role') +
         '</div>' +
         trend(agg) +
+        explainPanel(p, agg) +
       '</div>';
   }
 
@@ -588,6 +742,120 @@
     KV.frame = requestAnimationFrame(function () {
       KV.frame = 0;
       paint(root, p);
+    });
+  }
+
+  /* ------------------------------------------------- optional model layer */
+
+  /* OFF unless the host sets window.__kvAI = { key, model, endpoint }.
+     It is deliberately not settable from the measure: anything written into
+     DAX is readable by anyone who can open the report or view the model, so a
+     key embedded there is a key you have published. In the Service, set it
+     from a companion script or put a proxy you control in front of the API
+     and leave the key on the server.
+
+     What gets sent is the aggregate, not a screenshot. The renderer already
+     holds these numbers exactly; rendering them to pixels and asking a vision
+     model to read them back is slower, dearer, and can misread a digit with no
+     way to detect it. Facts in, prose out. */
+
+  function stateKey() {
+    var st = KV.state;
+    return [st.region, st.sev].concat(SETS.map(function (k) {
+      return k + ':' + Object.keys(st[k]).filter(function (x) { return st[k][x]; }).sort().join('|');
+    })).join(';');
+  }
+
+  /* A compact, self-describing brief. Small enough to be cheap, complete
+     enough that the model never has to guess a number. */
+  function aiFacts(p, agg) {
+    var base = baseline(p);
+    var top = function (map, lookup, n) {
+      return topRows(map, lookup, n).map(function (r) { return { name: r[1], cases: r[2] }; });
+    };
+    return {
+      selection: selectionLabel(KV.state),
+      period: { months: agg.months.length, from: agg.months[0], to: agg.months[agg.months.length - 1] },
+      totals: {
+        cases: agg.cases, recordable: agg.recordable, dart: agg.dart,
+        lostTime: agg.lost, daysAway: agg.daysAway, daysRestricted: agg.daysRestricted,
+        hoursWorked: Math.round(agg.hours)
+      },
+      rates: {
+        trir: agg.trir == null ? null : +agg.trir.toFixed(2),
+        dartRate: agg.dartRate == null ? null : +agg.dartRate.toFixed(2),
+        severityRate: agg.severityRate == null ? null : +agg.severityRate.toFixed(1),
+        note: agg.partialDenominator
+          ? 'exposure hours are not filtered by region, severity, mechanism or role'
+          : 'numerator and denominator are filtered alike'
+      },
+      unfiltered: { cases: base.cases, recordable: base.recordable,
+                    trir: base.trir == null ? null : +base.trir.toFixed(2) },
+      topBodyRegions: top(agg.byRegion, window.KV_REGIONS, 5),
+      topMechanisms: top(agg.byMech, window.KV_MECH, 5),
+      topRoles: top(agg.byRole, window.KV_ROLE, 5),
+      bySite: top(agg.bySite, window.KV_SITE, 8),
+      monthlyCases: agg.months.map(function (m) {
+        return [window.KV_MONTHS[m] || m, agg.byMonth[m] || 0];
+      }),
+      notLocalised: agg.unmappedTotal
+    };
+  }
+
+  var AI_SYSTEM =
+    'You are a safety analyst briefing an HSE manager on an occupational injury ' +
+    'report. You will be given the aggregate the dashboard is currently showing. ' +
+    'Write three or four short sentences of plain English: what stands out, what ' +
+    'it probably means operationally, and what to look at next. ' +
+    'Rules: use only the numbers provided and never invent one. Quote figures ' +
+    'exactly as given. If rates.note says exposure is not filtered alike, do not ' +
+    'compare that rate to the unfiltered one. No bullet points, no headings, no ' +
+    'preamble, no markdown. Do not repeat the numbers back as a list; interpret ' +
+    'them.';
+
+  function askModel(p, agg, root) {
+    var cfg = window.__kvAI || {};
+    if (!cfg.key || KV.aiBusy) return;
+    var key = stateKey();
+    KV.aiBusy = true;
+    KV.aiErr = '';
+    schedule(root, p);
+
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, cfg.timeoutMs || 25000);
+
+    fetch(cfg.endpoint || 'https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      signal: ctrl ? ctrl.signal : undefined,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.key },
+      body: JSON.stringify({
+        model: cfg.model || 'google/gemini-2.0-flash-lite-001',
+        max_tokens: cfg.maxTokens || 300,
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: AI_SYSTEM },
+          { role: 'user', content: JSON.stringify(aiFacts(p, agg)) }
+        ]
+      })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (j) {
+      var txt = j && j.choices && j.choices[0] && j.choices[0].message &&
+                j.choices[0].message.content;
+      if (!txt) throw new Error('no text in the response');
+      KV.aiText = String(txt).trim();
+      KV.aiKey = key;
+    })['catch'](function (e) {
+      /* Never blank the deterministic narrative because a network call failed.
+         The pane above it is still correct and still the point. */
+      KV.aiErr = 'The model could not be reached (' +
+                 (e && e.name === 'AbortError' ? 'timed out' : String(e.message || e)) +
+                 '). The summary above is unaffected.';
+    }).then(function () {
+      clearTimeout(timer);
+      KV.aiBusy = false;
+      schedule(root, window.__kvBody);
     });
   }
 
@@ -609,6 +877,9 @@
           KV.state.sev = null;
           SETS.forEach(function (k) { KV.state[k] = {}; });
           return schedule(root, window.__kvBody);
+        }
+        if (e.target.closest('[data-ai]')) {
+          return askModel(window.__kvBody, aggregate(window.__kvBody, KV.state), root);
         }
         var fchip = e.target.closest('[data-fk]');
         if (fchip) {

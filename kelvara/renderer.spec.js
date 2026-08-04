@@ -509,6 +509,160 @@ test.describe('panel cross-filtering', () => {
   });
 });
 
+test.describe('the explanation pane', () => {
+  const text = (page) => page.locator('.kv-ex').innerText();
+
+  test('explains the unfiltered page on first paint', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('.kv-explain')).toBeVisible();
+    const t = await text(page);
+    expect(t).toContain('The period in full');
+    expect(t).toMatch(/1,492 cases/);
+    expect(t).toMatch(/219 were recordable/);
+  });
+
+  test('every number it prints is one the page is showing', async ({ page }) => {
+    /* The whole point of generating this from the aggregate rather than from a
+       screenshot: the prose cannot disagree with the cards above it. */
+    await open(page);
+    const t = await text(page);
+    const k = await kpis(page);
+    expect(t).toContain(k['Cases'].value);
+    expect(t).toContain(k['Recordable'].value);
+    expect(t).toContain(k['Days away'].value);
+  });
+
+  test('rewrites itself when a body region is selected', async ({ page }) => {
+    await open(page);
+    const before = await text(page);
+    await page.evaluate((rk) => {
+      const svg = Object.keys(window.KV_SVG_TO_KEY)
+        .find((k) => window.KV_SVG_TO_KEY[k].includes(rk));
+      document.querySelector('#kv-figure path[data-region="' + svg + '"]').dispatchEvent(
+        new MouseEvent('click', { bubbles: true }));
+    }, EXP.topRegion);
+    await settle(page);
+    const after = await text(page);
+    expect(after).not.toBe(before);
+    expect(after).toContain('Fingers and thumb');
+    expect(after).toContain(String(EXP.region.cases));
+  });
+
+  test('names every active selection, not just the last one', async ({ page }) => {
+    await open(page);
+    await page.locator('.kv-bars li[data-fk="role"]').first().click();
+    await page.locator('.kv-bars li[data-fk="site"]').first().click();
+    await settle(page);
+    const t = await text(page);
+    const role = await page.locator('li[data-fk="role"].on .kv-bl').innerText();
+    const site = await page.locator('li[data-fk="site"].on .kv-bl').innerText();
+    expect(t).toContain(role);
+    expect(t).toContain(site);
+  });
+
+  test('states the caveat when the denominator could not follow', async ({ page }) => {
+    await open(page);
+    expect(await text(page)).not.toContain('cannot narrow the hours');
+    await page.locator('.kv-bars li[data-fk="mech"]').first().click();
+    await settle(page);
+    expect(await text(page)).toContain('cannot narrow the hours');
+  });
+
+  test('says so plainly when a selection matches nothing', async ({ page }) => {
+    await open(page);
+    /* Contradictory filters: one site crossed with a business unit it is not in. */
+    await page.evaluate(() => {
+      const st = window.__KV.state;
+      st.site = { 1: true };
+      const bu = window.KV_SITE_BU[1];
+      const other = window.KV_BU.find((b) => b !== bu);
+      st.bu = {}; st.bu[other] = true;
+      window.__KV.boot();
+    });
+    await settle(page);
+    expect(await text(page)).toContain('No cases fall inside the current filters');
+  });
+
+  test('nothing in the pane is clipped, in any selection state', async ({ page }) => {
+    /* overflow:hidden means content that does not fit is silently truncated
+       rather than escaping the canvas, so the page-fits test cannot see it.
+       The caveat sentence was losing its last line exactly this way. */
+    await open(page);
+    const states = [
+      null,
+      () => document.querySelector('#kv-figure path[data-region="skull"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true })),
+      () => document.querySelector('li[data-fk="mech"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true })),
+      () => document.querySelector('li[data-fk="role"]')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    ];
+    const clipped = [];
+    for (const step of states) {
+      if (step) await page.evaluate(step);
+      await settle(page);
+      const over = await page.evaluate(() => {
+        const el = document.querySelector('.kv-ex');
+        return { h: el.scrollHeight, c: el.clientHeight,
+                 first: el.querySelector('p') ? el.querySelector('p').textContent.slice(0, 40) : '' };
+      });
+      if (over.h > over.c + 1) clipped.push(`${over.first}… ${over.h} into ${over.c}`);
+    }
+    expect(clipped, 'explanation text cut off').toEqual([]);
+  });
+
+  test('the model button is hidden until a key is supplied', async ({ page }) => {
+    /* An API key cannot live in the measure: anything in DAX is readable by
+       anyone who can open the report. The layer stays inert without one. */
+    await open(page);
+    await expect(page.locator('.kv-ai')).toHaveCount(0);
+    await expect(page.locator('.kv-explain .kv-h3n')).toBeVisible();
+  });
+
+  test('the model layer sends facts, never pixels, and never blocks the pane',
+    async ({ page }) => {
+      await open(page);
+      let sent = null;
+      await page.route('**/chat/completions', async (route) => {
+        sent = JSON.parse(route.request().postData());
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            choices: [{ message: { content: 'Hands dominate; check glove policy.' } }]
+          })
+        });
+      });
+      await page.evaluate(() => {
+        window.__kvAI = { key: 'test-key', model: 'test/model' };
+        window.__KV.boot();
+      });
+      await page.locator('.kv-ai').click();
+      await expect(page.locator('.kv-aitext')).toHaveText(/glove policy/);
+
+      expect(sent, 'a request was made').toBeTruthy();
+      const brief = JSON.parse(sent.messages[1].content);
+      expect(brief.totals.cases, 'the brief carries the real total').toBe(EXP.all.cases);
+      expect(brief.totals.recordable).toBe(EXP.all.recordable);
+      /* No image payload anywhere: the model gets numbers it cannot misread. */
+      expect(JSON.stringify(sent)).not.toMatch(/data:image|image_url|base64/);
+      /* The deterministic narrative is still there underneath. */
+      expect(await text(page)).toMatch(/1,492 cases/);
+    });
+
+  test('a model failure degrades to the deterministic summary', async ({ page }) => {
+    await open(page);
+    await page.route('**/chat/completions', (route) => route.fulfill({ status: 500, body: '{}' }));
+    await page.evaluate(() => {
+      window.__kvAI = { key: 'test-key' };
+      window.__KV.boot();
+    });
+    await page.locator('.kv-ai').click();
+    await expect(page.locator('.kv-aierr')).toContainText('could not be reached');
+    expect(await text(page), 'the real summary survives').toMatch(/219 were recordable/);
+  });
+});
+
 test.describe('rendered figure geometry', () => {
   test('the shipped figure still satisfies the placement rules', async ({ page }) => {
     /* The geometry suite runs against the design-time preview. This runs the

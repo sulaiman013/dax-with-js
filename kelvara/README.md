@@ -62,7 +62,7 @@ neighbours 97%, of a set they are not in.
 | [`preview-page.html`](preview-page.html) | The whole page, offline. Open it in a browser, no server needed. |
 | [`preview-figure.html`](preview-figure.html) | Just the figure, for working on the geometry. |
 | [`anatomy.spec.js`](anatomy.spec.js) | 25 geometry tests. |
-| [`renderer.spec.js`](renderer.spec.js) | 40 renderer tests. |
+| [`renderer.spec.js`](renderer.spec.js) | 50 renderer tests. |
 | [`mutate.py`](mutate.py) | Injects real defects to prove the suite can fail. |
 | [`data/generate_data.py`](data/generate_data.py) | The seeded generator. Rebuilds every CSV from scratch, and asserts its own targets. |
 | [`data/csv/`](data/csv/) | The 16 generated tables. Synthetic, seed 42. |
@@ -119,6 +119,50 @@ unparseable JavaScript.
 
 ---
 
+## The explanation pane
+
+Every selection rewrites a plain-English summary of what is on screen: how big
+the selection is, whether it is more or less severe than normal, what is driving
+it, what it cost, and which way it is heading.
+
+It is computed from the same aggregate the panels are drawn from, so the prose
+cannot drift from the chart beside it. No network, no key, no latency, correct
+offline and correct on first paint.
+
+### Adding a model on top, and the two things to know first
+
+An optional layer sends the aggregate to an OpenRouter-compatible endpoint and
+prints the reply under the deterministic summary. It is **off** unless the host
+sets `window.__kvAI`:
+
+```js
+window.__kvAI = {
+  key: '...',                                  // never put this in the measure
+  model: 'google/gemini-2.0-flash-lite-001',   // any OpenRouter slug
+  maxTokens: 300,
+  timeoutMs: 25000
+}
+```
+
+**It sends facts, not a screenshot.** The renderer already holds these numbers
+exactly. Rendering them to pixels and asking a vision model to read them back is
+slower, dearer, and lossy: a misread digit is undetectable. The brief is compact
+JSON, and the prompt forbids inventing or restating a number that is not in it.
+
+**The key cannot live in the measure.** Anything written into DAX is readable by
+anyone who can open the report or view the model, so a key embedded there is a
+key you have published. Set it from a companion script, or put a proxy you
+control in front of the API and leave the key on the server.
+
+The layer is additive by construction. A failure, a timeout or a missing key
+leaves the deterministic summary untouched, which is asserted.
+
+Whether the sandboxed iframe can reach the endpoint at all in the Power BI
+Service depends on that host's CSP and has not been verified there. The local
+harness proves the code path with a routed response.
+
+---
+
 ## Target visual
 
 HTML Content, the **standard** (uncertified) edition:
@@ -146,7 +190,7 @@ python make_fixture.py             # build preview-page.html + the oracle
 npx playwright test
 ```
 
-65 tests in two suites.
+75 tests in two suites.
 
 **`anatomy.spec.js`** holds the figure to its placement rules: all 27 regions
 present on the right views, sub-regions inside their parents, extremities
