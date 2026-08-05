@@ -107,8 +107,8 @@ problem, because right-click is invisible.
 
 **Filters moved to a left rail.** Collapsed it is a 60px spine carrying a count
 badge and the selected values, so the reader always knows what is applied. Open,
-it is a 320px drawer over the content. Moving them off the top gave the figure
-back 86px of height: the figure went from 699px to 795px, which was the point.
+it is a 320px drawer over the content. Moving them off the top handed the band
+back to the figure: it went from 699px to 784px, which was the point.
 
 **Escape walks out one level at a time**: the drawer, then the detail view, then
 the selection. A single Escape that wiped everything would throw away a filter
