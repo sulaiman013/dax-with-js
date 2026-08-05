@@ -1615,10 +1615,17 @@
     }
 
     /* A region that vanished from the payload after a slicer change must not
-       leave the visual filtered to nothing. */
+       leave the visual filtered to nothing.
+
+       The stride is F, not 6. Walking by 6 against a real stride of 10 visits
+       offsets 0, 2, 4, 6 and 8, so it compared the region key against month,
+       shift, mechanism and days away as well. Days away runs 0 to 180 and so
+       contains almost every region key as an ordinary value: the guard found a
+       false match and left the stale region in place for 21 of the 30 regions,
+       which is the exact thing it exists to prevent. */
     if (KV.state.region != null) {
       var seen = false, f = p.f || [];
-      for (var i = 0; i < f.length; i += 6) {
+      for (var i = 0; i < f.length; i += F) {
         if (f[i] === KV.state.region) { seen = true; break; }
       }
       if (!seen) KV.state.region = null;

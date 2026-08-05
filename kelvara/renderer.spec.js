@@ -354,6 +354,50 @@ test.describe('interaction', () => {
     await expect(page.locator('.kv-chip')).toHaveCount(1);
     expect(n((await kpis(page))['Cases'].value)).toBe(EXP.region.cases);
   });
+
+  test('a region that vanished from the payload is cleared, not left stale',
+    async ({ page }) => {
+      /* A slicer can remove the selected region from the payload entirely, and
+         the visual must not stay filtered to nothing. The guard walked the fact
+         array with a stride of 6 against a real stride of 10, so it read month,
+         shift, mechanism and days away as if they were region keys. Days away
+         runs 0 to 180 and contains almost every region key as an ordinary
+         value, so the guard found a false match and left the selection stale
+         for 21 of the 30 regions.
+
+         Every region is checked, not one: the nine that happened not to collide
+         would have passed a single-region test and hidden the bug. */
+      await open(page);
+      const stale = await page.evaluate(() => {
+        const F = 10;
+        const original = window.__kvBody.f;
+        const keys = [];
+        for (let i = 0; i < original.length; i += F) {
+          if (keys.indexOf(original[i]) < 0) keys.push(original[i]);
+        }
+        const failed = [];
+        keys.forEach((k) => {
+          const reduced = [];
+          for (let i = 0; i < original.length; i += F) {
+            if (original[i] !== k) {
+              for (let j = 0; j < F; j++) reduced.push(original[i + j]);
+            }
+          }
+          window.__KV.state.region = k;
+          window.__kvBody = Object.assign({}, window.__kvBody, { f: reduced });
+          window.__KV.boot();
+          if (window.__KV.state.region !== null) failed.push(k);
+        });
+        window.__kvBody = Object.assign({}, window.__kvBody, { f: original });
+        window.__KV.state.region = null;
+        window.__KV.boot();
+        return { failed: failed, tested: keys.length };
+      });
+      expect(stale.tested, 'every region in the payload was exercised')
+        .toBeGreaterThan(25);
+      expect(stale.failed, 'regions left selected after vanishing from the payload')
+        .toEqual([]);
+    });
 });
 
 test.describe('the filter rail', () => {

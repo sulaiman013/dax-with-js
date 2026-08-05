@@ -74,7 +74,7 @@ neighbours 97%, of a set they are not in.
 | [`preview-page.html`](preview-page.html) | The whole page, offline. Open it in a browser, no server needed. |
 | [`preview-figure.html`](preview-figure.html) | Just the figure, for working on the geometry. |
 | [`anatomy.spec.js`](anatomy.spec.js) | 25 geometry tests. |
-| [`renderer.spec.js`](renderer.spec.js) | 63 renderer tests. |
+| [`renderer.spec.js`](renderer.spec.js) | 64 renderer tests. |
 | [`expected.json`](expected.json) | The oracle: the same KPIs computed a second time straight off the raw CSV rows. |
 | [`screenshot-guide.png`](screenshot-guide.png) | The guide card under the explanation pane. |
 | [`bake_ai.py`](bake_ai.py) | Generates one explanation per body region at build time and grounds-checks each. |
@@ -118,13 +118,27 @@ back to the figure: it went from 699px to 784px, which was the point.
 the selection. A single Escape that wiped everything would throw away a filter
 set someone had spent time building.
 
-### One bug worth recording
+### Two bugs worth recording
 
 Region clicks stopped working entirely after the first pass at this. The back
 button was given `data-view="map"`, and every figure path already carries
 `data-view="front"` or `"back"` from the geometry tests, so
 `closest('[data-view]')` matched every region click and set the view to
 `"back"`. Renamed to `data-goto`. The test suite caught it on the first run.
+
+The second one the suite did **not** catch, because nothing tested it. A slicer
+can remove the selected region from the payload entirely, and a guard exists to
+clear the selection when that happens, or the visual sits filtered to nothing.
+It walked the fact array with a stride of 6 against a real stride of 10, so it
+visited offsets 0, 2, 4, 6 and 8 and compared the region key against month,
+shift, mechanism and **days away**. Days away runs 0 to 180, so it contains
+almost every region key as an ordinary value. The guard found a false match and
+left the stale selection in place for **21 of the 30 regions**.
+
+The nine that behaved were the high keys that happened not to collide, which is
+exactly why the test added with the fix exercises every region rather than one.
+Checked against the unfixed runtime first, where it reports 23 regions left
+stale, so it is a test that can fail.
 
 ---
 
@@ -348,7 +362,7 @@ npm install @playwright/test
 npx playwright test
 ```
 
-**88 tests in two suites**, 25 geometry and 63 renderer.
+**89 tests in two suites**, 25 geometry and 64 renderer.
 
 The bake and build scripts are committed to be read, not run in place: they
 expect the full project layout, where the renderer sits at
