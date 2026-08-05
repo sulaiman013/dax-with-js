@@ -14,10 +14,11 @@ else moved a gesture away.*
 | | |
 |---|---|
 | ![Filter rail](screenshot-rail.png) | ![Breakdown](screenshot-detail.png) |
-| The filter rail, open. Collapsed it is a 60px spine that still shows what is applied. | Right-click a region for the breakdown: severity, site, mechanism, role, trend. |
+| The filter rail, open. Collapsed it is a 60px spine that still shows what is applied. | Right-click a region for the breakdown: severity, site, mechanism, role, the monthly trend and a row-level case table with CSV export. |
 
-Every screenshot is rendered from the exact bytes `[JS Body Map]` returns from a
-running Power BI Desktop model, pulled over ADOMD. Not a mock-up.
+Every screenshot is rendered at 1920 x 1080 from the same runtime and payload
+the measure ships, so what you see is what `[JS Body Map]` returns from a
+running Power BI Desktop model. Not a mock-up.
 
 ---
 
@@ -73,7 +74,9 @@ neighbours 97%, of a set they are not in.
 | [`preview-page.html`](preview-page.html) | The whole page, offline. Open it in a browser, no server needed. |
 | [`preview-figure.html`](preview-figure.html) | Just the figure, for working on the geometry. |
 | [`anatomy.spec.js`](anatomy.spec.js) | 25 geometry tests. |
-| [`renderer.spec.js`](renderer.spec.js) | 46 renderer tests. |
+| [`renderer.spec.js`](renderer.spec.js) | 63 renderer tests. |
+| [`expected.json`](expected.json) | The oracle: the same KPIs computed a second time straight off the raw CSV rows. |
+| [`screenshot-guide.png`](screenshot-guide.png) | The guide card under the explanation pane. |
 | [`bake_ai.py`](bake_ai.py) | Generates one explanation per body region at build time and grounds-checks each. |
 | [`ai-baked.json`](ai-baked.json) | The 30 generated explanations, shipped as data inside the measure. |
 | [`mutate.py`](mutate.py) | Injects real defects to prove the suite can fail. |
@@ -98,7 +101,8 @@ Rather than pretend otherwise, the page carries both views itself:
   and the KPI strip narrows to it in about a millisecond.
 - **Detail view.** Right-click a region, or press **Breakdown**, and the same
   visual swaps to severity mix, cases by site, top mechanisms, most exposed
-  roles and the monthly trend. **Back** returns with the selection intact.
+  roles, the monthly trend and a row-level case table. **Back** returns with the
+  selection intact.
 
 The detail view deliberately does not require a region. Making it right-click
 only would have left no way to see mechanisms or roles across the whole estate,
@@ -121,6 +125,83 @@ button was given `data-view="map"`, and every figure path already carries
 `data-view="front"` or `"back"` from the geometry tests, so
 `closest('[data-view]')` matched every region click and set the view to
 `"back"`. Renamed to `data-goto`. The test suite caught it on the first run.
+
+---
+
+## The case table, and why the export had to be built
+
+Power BI exports what the visual was *given*, and this visual is given one
+measure: a single HTML string of about 160,000 characters. **Native Export data
+hands the reader markup.** It is useless here by construction, so the export is
+part of the page.
+
+The breakdown carries a row-level table: month, site, body region, severity,
+mechanism, job role, shift, days away, days restricted. Columns sort both ways.
+It draws 300 rows and says so, *"showing 300 of 1,492, export gives all"*. The
+cap is for the DOM. **The export is never capped.** A table that silently
+truncates and an export that silently truncates are different failures, and only
+one of them is acceptable.
+
+Three export paths, in descending pleasantness:
+
+1. **Download CSV**, a Blob and an object URL.
+2. **Copy**, the clipboard API with `execCommand` behind it.
+3. **The textarea**, the CSV on screen, selected, ready for Ctrl+C.
+
+The third exists because whether a sandboxed iframe may start a download is
+decided by the host's sandbox flags, which the visual neither sees nor controls,
+and **a blocked download fails silently**. The last resort needs no browser API
+at all. In a sandbox you do not detect capability, you degrade to something that
+cannot fail.
+
+Measured on the unfiltered page: 1,493 lines, exactly 9 fields on every row, and
+**344 rows that needed quoting**, because a mechanism like *Fall on same level,
+slip or trip* carries a comma. Without RFC 4180 quoting, every field after it
+shifts by one.
+
+---
+
+## The trend is a filter control
+
+Hover gives a dashed crosshair and a tooltip reading the month and its count.
+Click a point to filter to that month. Drag across to brush a range.
+
+**Hover moves three elements rather than repainting.** A repaint per mousemove
+would re-aggregate 1,492 rows sixty times a second to shift a line four pixels.
+Click and drag change state, so those repaint.
+
+**A month narrows the denominator, and a body region does not.** Month is a
+property of exposure, so the hours follow it: select one month and TRIR divides
+by that month's hours. It is the same rule as the section above, applied in the
+other direction. The rule is about what the dimension *is*, not about which
+control the reader touched.
+
+The trend keeps every month on screen while one is selected, so the selection
+can be seen in context and clicked off again. That means it honours every filter
+except its own, exactly like the other panels.
+
+### The bug this shape invites
+
+The month filter reached `aggregate()` but not `detailRows()`, so **the table and
+the CSV returned all 1,492 rows while the KPI beside them said 64**. Precisely
+the quiet disagreement that discredits a report. There is now a test asserting
+the month selection reaches the export.
+
+---
+
+## A guide card, not a GIF
+
+Four numbered steps sit under the explanation pane, over a looping SVG demo of
+the click and right-click gestures.
+
+A screen recording was the obvious answer and the arithmetic ruled it out. A few
+hundred KB of GIF is roughly 400,000 characters once base64 encoded, about a
+fifth of the whole measure budget, spent on something that blurs whenever the
+visual scales and cannot be corrected without re-recording. The SVG loop is
+about 3KB, stays sharp at any size, and its steps are editable text.
+
+It honours `prefers-reduced-motion`. Motion in a dashboard is an accessibility
+concern, not decoration.
 
 ---
 
@@ -156,9 +237,9 @@ but would fix the filter set at build time, which is the thing being avoided.
 **The runtime is inlined, not fetched from a CDN.** A CDN needs a loader, a
 retry and a watchdog, and in the Service the first cold fetch is slow enough
 that a naive watchdog fires before the script lands and reports a failure that
-is not real. The generated measure is 79,579 characters against a ~2,100,000
-character ceiling, so inlining costs 3.8% of the budget and removes the whole
-failure mode.
+is not real. The runtime minifies from 106,741 characters to 79,796, and the
+finished measure expression is 104,221 against a ~2,100,000 character ceiling,
+so inlining costs 5.0% of the budget and removes the whole failure mode.
 
 **Only digits and commas cross the DAX boundary.** Dimension labels are baked
 into the runtime rather than shipped from the model, which removes string
@@ -260,15 +341,19 @@ band has a fixed height and only the body grid flexes.
 
 ## Running the tests
 
+Every generated file is committed, so the suite runs straight from a clone:
+
 ```
 npm install @playwright/test
-python data/generate_data.py     # optional, the CSVs are committed
-python build_runtime.py            # regenerate kelvara-bodymap.js
-python make_fixture.py             # build preview-page.html + the oracle
 npx playwright test
 ```
 
-71 tests in two suites.
+**88 tests in two suites**, 25 geometry and 63 renderer.
+
+The bake and build scripts are committed to be read, not run in place: they
+expect the full project layout, where the renderer sits at
+`design-assets/bodymap.src.js` and the CSVs sit beside it. Regeneration happens
+there, and the artifacts are copied in under the names above.
 
 **`anatomy.spec.js`** holds the figure to its placement rules: all 27 regions
 present on the right views, sub-regions inside their parents, extremities
@@ -282,6 +367,12 @@ time, separately, straight off the raw CSV rows, so an aggregation mistake would
 have to be made twice in two different shapes to pass. It also asserts the
 denominator rules above, that the page fits 1920x1080 with nothing cut off, and
 that re-running the runtime does not double-wire the click handlers.
+
+It covers the later additions on the same terms: that the two views survive a
+selection, that the rail reports what is applied while collapsed, that the case
+table sorts both ways and admits its 300-row cap, that the CSV is well formed
+and follows the selection, that the export degrades to copyable text, and that
+hovering, clicking and dragging the trend filter the page and reach the export.
 
 ### Proving the suite can fail
 

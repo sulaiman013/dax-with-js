@@ -10,7 +10,7 @@ const path = require('path');
 const G = require('./geometry');
 
 const PAGE = 'file:///' + path
-  .resolve(__dirname, '..', 'design-assets', 'body-preview.html')
+  .resolve(__dirname, 'preview-figure.html')
   .split(path.sep).join('/');
 
 /* The 27 OIICS regions the report has to be able to select. */

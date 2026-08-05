@@ -106,7 +106,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
   var KV = window.__KV || (window.__KV = {
     state: {
       region: null, sev: null,
-      site: {}, bu: {}, shift: {}, wclass: {}, year: {}, mech: {}, role: {}
+      site: {}, bu: {}, shift: {}, wclass: {}, year: {}, mech: {}, role: {}, month: {}
     },
     /* 'map' is the reading surface: figure, KPIs, explanation. 'detail' is
        reached by right-clicking a region and carries the breakdowns. A real
@@ -122,8 +122,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
   /* Every set-valued dimension, in one place. Used by clear-all, by the
      key-coercion in the click handler and by the "any filter active" test, so
      adding a filterable panel means touching this list and nothing else. */
-  var SETS = ['site', 'bu', 'shift', 'wclass', 'year', 'mech', 'role'];
-  var NUMERIC_SETS = { site: 1, shift: 1, wclass: 1, year: 1, mech: 1, role: 1 };
+  var SETS = ['site', 'bu', 'shift', 'wclass', 'year', 'mech', 'role', 'month'];
+  var NUMERIC_SETS = { site: 1, shift: 1, wclass: 1, year: 1, mech: 1, role: 1, month: 1 };
 
   function anyOn(set) {
     for (var k in set) if (set[k]) return true;
@@ -154,6 +154,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       cases: 0, recordable: 0, dart: 0, lost: 0, firstAid: 0,
       daysAway: 0, daysRestricted: 0, hours: 0,
       byRegion: {}, bySev: {}, byMonth: {}, byMech: {}, byRole: {}, bySite: {},
+      allMonths: {},
       months: [], maxRegion: 0
     };
 
@@ -166,7 +167,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     var monthSet = {};
     for (var i = 0; i < h.length; i += HH) {
       var hy = h[i], hs = h[i + 1];
-      if (!passes(st.year, Math.floor(hy / 100)) || !passes(st.site, hs)) continue;
+      if (!passes(st.year, Math.floor(hy / 100)) || !passes(st.month, hy)) continue;
+      if (!passes(st.site, hs)) continue;
       if (!passes(st.bu, buOf[hs])) continue;
       if (!passes(st.shift, h[i + 2]) || !passes(st.wclass, h[i + 3])) continue;
       monthSet[hy] = true;
@@ -186,6 +188,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       /* Dimensions with no panel of their own: they gate everything. */
       if (!passes(st.year, Math.floor(ymk / 100))) continue;
       if (!passes(st.bu, buOf[site])) continue;
+      var pMonth = passes(st.month, ymk);
       if (!passes(st.shift, f[j + 4]) || !passes(st.wclass, f[j + 5])) continue;
 
       var pSite = passes(st.site, site);
@@ -194,15 +197,21 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       var pMech = passes(st.mech, mech);
       var pRole = passes(st.role, role);
 
-      if (pSite && pSev && pRegion && pMech && pRole) monthSet[ymk] = true;
+      if (pSite && pSev && pRegion && pMech && pRole && pMonth) monthSet[ymk] = true;
 
-      if (pSite && pSev && pMech && pRole) out.byRegion[rk] = (out.byRegion[rk] || 0) + 1;
-      if (pSite && pRegion && pMech && pRole) out.bySev[sk] = (out.bySev[sk] || 0) + 1;
-      if (pSev && pRegion && pMech && pRole) out.bySite[site] = (out.bySite[site] || 0) + 1;
-      if (pSite && pSev && pRegion && pRole) out.byMech[mech] = (out.byMech[mech] || 0) + 1;
-      if (pSite && pSev && pRegion && pMech) out.byRole[role] = (out.byRole[role] || 0) + 1;
+      if (pSite && pSev && pMech && pRole && pMonth) out.byRegion[rk] = (out.byRegion[rk] || 0) + 1;
+      if (pSite && pRegion && pMech && pRole && pMonth) out.bySev[sk] = (out.bySev[sk] || 0) + 1;
+      if (pSev && pRegion && pMech && pRole && pMonth) out.bySite[site] = (out.bySite[site] || 0) + 1;
+      if (pSite && pSev && pRegion && pRole && pMonth) out.byMech[mech] = (out.byMech[mech] || 0) + 1;
+      if (pSite && pSev && pRegion && pMech && pMonth) out.byRole[role] = (out.byRole[role] || 0) + 1;
+      /* The trend keeps every month on screen so a selected month can be seen
+         in context and deselected; it honours everything except itself. */
+      if (pSite && pSev && pRegion && pMech && pRole) {
+        out.byMonth[ymk] = (out.byMonth[ymk] || 0) + 1;
+        out.allMonths[ymk] = true;
+      }
 
-      if (!(pSite && pSev && pRegion && pMech && pRole)) continue;
+      if (!(pSite && pSev && pRegion && pMech && pRole && pMonth)) continue;
 
       var sev = window.KV_SEV[sk] || {};
       out.cases += 1;
@@ -212,7 +221,9 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
       if (sev.dart) out.dart += 1;
       if (sev.lost) out.lost += 1;
       if (!sev.rec) out.firstAid += 1;
-      out.byMonth[ymk] = (out.byMonth[ymk] || 0) + 1;
+      /* byMonth is counted ONLY in the self-excluded block above. Counting it
+         here as well double-counted every month whenever no month filter was
+         active: the narrative halves summed to twice the case count. */
     }
 
     /* Exposure has no region, severity, mechanism or job-role grain, so those
@@ -222,7 +233,11 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     out.partialDenominator =
       st.region != null || st.sev != null || anyOn(st.mech) || anyOn(st.role);
 
-    out.months = Object.keys(monthSet).map(Number).sort(function (a, b) { return a - b; });
+    out.months = Object.keys(out.allMonths).map(Number)
+      .sort(function (a, b) { return a - b; });
+    if (!out.months.length) {
+      out.months = Object.keys(monthSet).map(Number).sort(function (a, b) { return a - b; });
+    }
 
     /* OIICS has three codes that no figure can carry: multiple body parts,
        body systems, and nonclassifiable. About one case in forty lands there.
@@ -306,12 +321,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
   /* ---------------------------------------------------------------- trend */
 
   function trend(agg) {
-    /* The viewBox is sized to the box the panel actually gives this chart, so
-       one user unit is one CSS pixel and the tick text renders at its stated
-       size. The previous 1660-wide viewBox stretched with
-       preserveAspectRatio="none" into a 520px column, which squashed every
-       label horizontally to about a third of its width and made the axis
-       unreadable. */
+    /* Sized to the box the panel gives it, so one user unit is one CSS pixel
+       and the tick text renders at its stated size. */
     var W = 512, H = 186, L = 34, R = 10, T = 12, B = 28;
     var ms = agg.months;
     if (ms.length < 2) {
@@ -325,24 +336,40 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     var y = function (v) { return H - B - (v / max) * (H - T - B); };
     var pts = vals.map(function (v, i) { return [L + i * stepX, y(v)]; });
 
-    var line = pts.map(function (p, i) {
-      return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1);
+    /* Geometry the hover handler needs. Kept on KV so a mousemove can find the
+       nearest point without re-rendering, which at 60Hz would be absurd. */
+    KV.trend = { months: ms, vals: vals, L: L, R: R, W: W, H: H, T: T, B: B,
+                 step: stepX, max: max };
+
+    var line = pts.map(function (p2, i) {
+      return (i ? 'L' : 'M') + p2[0].toFixed(1) + ' ' + p2[1].toFixed(1);
     }).join('');
     var area = line + 'L' + pts[pts.length - 1][0].toFixed(1) + ' ' + (H - B) +
                'L' + pts[0][0].toFixed(1) + ' ' + (H - B) + 'Z';
 
-    /* Thin the axis to whole labels rather than drawing every month and
-       letting them overlap into a grey smear. */
+    var sel = KV.state.month;
+    var anySel = anyOn(sel);
+
+    /* Shade the selected months so a range reads as a band rather than as a
+       row of separately highlighted dots. */
+    var bands = '';
+    if (anySel) {
+      ms.forEach(function (m, i) {
+        if (!sel[m]) return;
+        bands += '<rect class="kv-tband" x="' + (L + (i - 0.5) * stepX).toFixed(1) +
+                 '" y="' + T + '" width="' + stepX.toFixed(1) +
+                 '" height="' + (H - T - B) + '"/>';
+      });
+    }
+
     var every = Math.max(1, Math.ceil(ms.length / 5));
     var ticks = '';
     ms.forEach(function (m, i) {
       if (i % every) return;
-      var lab = window.KV_MONTHS[m] || String(m);
       ticks += '<text x="' + (L + i * stepX).toFixed(1) + '" y="' + (H - 12) +
-               '" class="kv-tick">' + esc(lab) + '</text>';
+               '" class="kv-tick">' + esc(window.KV_MONTHS[m] || m) + '</text>';
     });
 
-    /* Two gridlines and a scale, so the shape can be read as a quantity. */
     var grid = '';
     [0, 0.5, 1].forEach(function (t) {
       var gy = y(max * t);
@@ -352,19 +379,36 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
               '" class="kv-tick" text-anchor="end">' + num(max * t) + '</text>';
     });
 
-    var dots = pts.map(function (p, i) {
-      return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) +
-             '" r="2.6"><title>' + esc(window.KV_MONTHS[ms[i]] || ms[i]) + ': ' +
-             num(vals[i]) + ' cases</title></circle>';
+    var dots = pts.map(function (p2, i) {
+      var on = !!sel[ms[i]];
+      return '<circle class="kv-tdot' + (on ? ' on' : '') +
+             (anySel && !on ? ' off' : '') + '" data-ym="' + ms[i] +
+             '" cx="' + p2[0].toFixed(1) + '" cy="' + p2[1].toFixed(1) +
+             '" r="' + (on ? 4 : 2.6) + '"></circle>';
     }).join('');
 
     return '<div class="kv-panel kv-trend"><h3>Monthly cases' +
-           (KV.state.region != null ? ', ' + esc(regionName(KV.state.region)) : '') +
-           '</h3><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-           grid + '<path d="' + area + '" fill="rgba(150,100,26,.10)"/>' +
-           '<path d="' + line + '" fill="none" stroke="' + PALETTE.accent +
-           '" stroke-width="1.8" stroke-linejoin="round"/>' +
-           '<g fill="' + PALETTE.accent + '">' + dots + '</g>' + ticks + '</svg></div>';
+      (KV.state.region != null ? ', ' + esc(regionName(KV.state.region)) : '') +
+      '<span class="kv-h3n">' +
+      (anySel ? num(Object.keys(sel).filter(function (k) { return sel[k]; }).length) +
+                ' month(s) selected'
+              : 'click or drag to filter') +
+      '</span></h3>' +
+      '<div class="kv-twrap">' +
+      '<svg class="kv-tsvg" viewBox="0 0 ' + W + ' ' + H +
+        '" preserveAspectRatio="xMidYMid meet">' +
+        grid + bands +
+        '<path d="' + area + '" fill="rgba(150,100,26,.10)"/>' +
+        '<path d="' + line + '" fill="none" stroke="' + PALETTE.accent +
+        '" stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<g fill="' + PALETTE.accent + '">' + dots + '</g>' + ticks +
+        '<rect class="kv-tsel" x="0" y="' + T + '" width="0" height="' +
+          (H - T - B) + '" style="display:none"/>' +
+        '<line class="kv-tcross" y1="' + T + '" y2="' + (H - B) +
+          '" style="display:none"/>' +
+      '</svg>' +
+      '<div class="kv-tt" style="display:none"></div>' +
+      '</div></div>';
   }
 
   function regionName(key) {
@@ -670,6 +714,125 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
            '<div class="kv-fc">' + chips + '</div></div>';
   }
 
+  /* -------------------------------------------------- detail rows + export */
+
+  /* Native "Export data" is no use here. Power BI exports what the visual was
+     given, and this visual is given one measure: a 149,000 character HTML
+     string. A reader who tries it gets markup. So the export has to be built,
+     and it has to be built defensively: the iframe is sandboxed with a null
+     origin, and whether downloads are permitted is set by the host, not by us.
+     Three paths, ending in one that needs no browser API at all. */
+
+  var COLS = [
+    ['month', 'Month',      function (r) { return window.KV_MONTHS[r.ym] || r.ym; }],
+    ['site',  'Site',       function (r) { return window.KV_SITE[r.site] || r.site; }],
+    ['region', 'Body region', function (r) { return regionName(r.region); }],
+    ['sev',   'Severity',   function (r) { return (window.KV_SEV[r.sev] || {}).name || r.sev; }],
+    ['mech',  'Mechanism',  function (r) { return window.KV_MECH[r.mech] || r.mech; }],
+    ['role',  'Job role',   function (r) { return window.KV_ROLE[r.role] || r.role; }],
+    ['shift', 'Shift',      function (r) { return window.KV_SHIFT[r.shift] || r.shift; }],
+    ['da',    'Days away',  function (r) { return r.da; }],
+    ['dr',    'Days restricted', function (r) { return r.dr; }]
+  ];
+
+  /* Every row the current filters admit, at the grain the measure ships. */
+  function detailRows(p, st) {
+    var f = p.f || [], out = [], buOf = window.KV_SITE_BU || {};
+    for (var j = 0; j < f.length; j += F) {
+      var rk = f[j], sk = f[j + 1], ymk = f[j + 2], site = f[j + 3];
+      if (!passes(st.year, Math.floor(ymk / 100))) continue;
+      /* Month too. Adding a dimension to aggregate() and forgetting it here
+         means the table and the export quietly disagree with the KPI cards. */
+      if (!passes(st.month, ymk)) continue;
+      if (!passes(st.site, site) || !passes(st.bu, buOf[site])) continue;
+      if (!passes(st.shift, f[j + 4]) || !passes(st.wclass, f[j + 5])) continue;
+      if (st.region != null && st.region !== rk) continue;
+      if (st.sev != null && st.sev !== sk) continue;
+      if (!passes(st.mech, f[j + 6]) || !passes(st.role, f[j + 7])) continue;
+      out.push({ region: rk, sev: sk, ym: ymk, site: site, shift: f[j + 4],
+                 wclass: f[j + 5], mech: f[j + 6], role: f[j + 7],
+                 da: f[j + 8], dr: f[j + 9] });
+    }
+    var srt = KV.sort;
+    if (srt && srt.col) {
+      var col = COLS.filter(function (c) { return c[0] === srt.col; })[0];
+      if (col) {
+        out.sort(function (a, b) {
+          var x = col[2](a), y = col[2](b);
+          var c = (typeof x === 'number' && typeof y === 'number')
+            ? x - y : String(x).localeCompare(String(y));
+          return srt.dir === 'desc' ? -c : c;
+        });
+      }
+    }
+    return out;
+  }
+
+  /* RFC 4180 quoting. A mechanism name carrying a comma would otherwise split
+     into two columns and silently shift every field after it. */
+  var CSV_EOL = String.fromCharCode(13, 10);
+  /* Built from char codes rather than written as a class with escapes: this
+     file is generated through several layers of shell and Python quoting, and
+     a literal \\r\\n in the source has been silently turned into real newlines
+     more than once, which breaks the regex and flattens the CSV. */
+  var CSV_NEEDS_QUOTE = new RegExp('[",' + String.fromCharCode(13, 10) + ']');
+
+  function csvCell(v) {
+    var t = v == null ? '' : String(v);
+    return CSV_NEEDS_QUOTE.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  }
+
+  function toCsv(rows) {
+    var lines = [COLS.map(function (c) { return csvCell(c[1]); }).join(',')];
+    rows.forEach(function (r) {
+      lines.push(COLS.map(function (c) { return csvCell(c[2](r)); }).join(','));
+    });
+    return lines.join(CSV_EOL);
+  }
+
+  var TABLE_CAP = 300;
+
+  function table(p, agg) {
+    var rows = detailRows(p, KV.state);
+    var shown = rows.slice(0, TABLE_CAP);
+    var srt = KV.sort || {};
+    var head = COLS.map(function (c) {
+      var on = srt.col === c[0];
+      /* The arrow is written here rather than as CSS content: a \25b2 escape
+         has to survive several quoting layers to reach the measure, and one of
+         them read it as octal and produced a control character the XMLA
+         request then rejected. */
+      var arrow = on ? String.fromCharCode(srt.dir === 'asc' ? 9650 : 9660) : '';
+      return '<th data-sort="' + c[0] + '" class="' + (on ? 'on ' + srt.dir : '') + '">' +
+             esc(c[1]) + '<i>' + arrow + '</i></th>';
+    }).join('');
+    var body = shown.map(function (r) {
+      return '<tr>' + COLS.map(function (c) {
+        var v = c[2](r);
+        return '<td' + (typeof v === 'number' ? ' class="n"' : '') + '>' +
+               esc(typeof v === 'number' ? num(v) : v) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+
+    return '<div class="kv-panel kv-table"><h3>Cases' +
+      '<span class="kv-h3n">' +
+        (rows.length > TABLE_CAP
+          ? 'showing ' + num(TABLE_CAP) + ' of ' + num(rows.length) + ', export gives all'
+          : num(rows.length) + ' rows') +
+      '</span>' +
+      '<span class="kv-exp">' +
+        '<button data-export="download">Download CSV</button>' +
+        '<button data-export="copy">Copy</button>' +
+      '</span></h3>' +
+      (KV.exportMsg ? '<p class="kv-expmsg">' + esc(KV.exportMsg) + '</p>' : '') +
+      (KV.exportText
+        ? '<textarea class="kv-expbox" readonly>' + esc(KV.exportText) + '</textarea>'
+        : '<div class="kv-tw"><table><thead><tr>' + head + '</tr></thead>' +
+          '<tbody>' + (body || '<tr><td colspan="9" class="kv-empty">' +
+          'No cases match the current filters.</td></tr>') + '</tbody></table></div>') +
+      '</div>';
+  }
+
   /* ---------------------------------------------------------------- guide */
 
   /* A demonstration rather than a screen recording. A GIF of the real report
@@ -928,6 +1091,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
                sumOf(agg.byMech), PALETTE.accent, 'mech') +
           bars('Most exposed roles', topRows(agg.byRole, window.KV_ROLE, 9),
                sumOf(agg.byRole), PALETTE.good, 'role') +
+          table(p, agg) +
           trend(agg) +
         '</div>'
       : '<div class="kv-body">' +
@@ -1127,6 +1291,65 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     });
   }
 
+  /* --------------------------------------------------------------- export */
+
+  /* Three paths, in order of how pleasant they are, ending in one that cannot
+     fail. Whether a sandboxed iframe may start a download is decided by the
+     host's sandbox flags, which we neither see nor control, and a blocked
+     download fails silently. So the fallback is not an error message, it is the
+     data itself, selected and ready to copy. */
+  function exportCsv(mode, root) {
+    var rows = detailRows(window.__kvBody, KV.state);
+    var csv = toCsv(rows);
+    var name = 'kelvara-cases-' +
+      (KV.state.region != null
+        ? regionName(KV.state.region).toLowerCase().replace(/[^a-z0-9]+/g, '-')
+        : 'all') + '.csv';
+
+    if (mode === 'download') {
+      try {
+        var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          URL.revokeObjectURL(url);
+          if (a.parentNode) a.parentNode.removeChild(a);
+        }, 1500);
+        KV.exportMsg = 'Downloading ' + name + ' with ' + num(rows.length) +
+                       ' rows. If nothing arrives, the host blocked it: use Copy.';
+        KV.exportText = '';
+      } catch (err) {
+        KV.exportText = csv;
+        KV.exportMsg = 'This host blocks downloads. The rows are below, select ' +
+                       'all and copy.';
+      }
+      return schedule(root, window.__kvBody);
+    }
+
+    /* Copy. The async Clipboard API needs a permission and a secure context and
+       a null origin usually has neither, so execCommand is tried too, and the
+       textarea stays on screen either way. */
+    KV.exportText = csv;
+    KV.exportMsg = num(rows.length) + ' rows. Copied to the clipboard if your ' +
+                   'host allows it; otherwise select all below and copy.';
+    schedule(root, window.__kvBody);
+    setTimeout(function () {
+      var box = root.querySelector('.kv-expbox');
+      if (!box) return;
+      box.focus();
+      box.select();
+      try { document.execCommand('copy'); } catch (e) { /* fine, it is selected */ }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(csv)['catch'](function () { /* fine */ });
+      }
+    }, 40);
+  }
+
   /* --------------------------------------------------------------- scaling */
 
   /* The page is authored at exactly 1920x1080 and then scaled to whatever box
@@ -1161,6 +1384,116 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     window.addEventListener('resize', fit);
   }
 
+  /* ------------------------------------------------------- trend pointer */
+
+  /* Hover is handled by moving three elements, not by repainting. A repaint per
+     mousemove would re-aggregate 1,492 rows sixty times a second to move a
+     line four pixels. Click and drag do change state, so those repaint. */
+  function trendGeom(svg, clientX) {
+    var g = KV.trend;
+    if (!g || !g.months.length) return null;
+    var box = svg.getBoundingClientRect();
+    /* preserveAspectRatio="meet" letterboxes, so map through the painted box
+       rather than assuming the svg fills its element. */
+    var scale = Math.min(box.width / g.W, box.height / g.H);
+    var padX = (box.width - g.W * scale) / 2;
+    var ux = (clientX - box.left - padX) / scale;
+    var i = Math.round((ux - g.L) / g.step);
+    if (i < 0) i = 0;
+    if (i > g.months.length - 1) i = g.months.length - 1;
+    return { i: i, ym: g.months[i], x: g.L + i * g.step, g: g };
+  }
+
+  function trendHover(svg, hit) {
+    var wrap = svg.parentNode;
+    var cross = svg.querySelector('.kv-tcross');
+    var tip = wrap.querySelector('.kv-tt');
+    if (!hit) {
+      if (cross) cross.style.display = 'none';
+      if (tip) tip.style.display = 'none';
+      return;
+    }
+    var g = hit.g;
+    if (cross) {
+      cross.setAttribute('x1', hit.x.toFixed(1));
+      cross.setAttribute('x2', hit.x.toFixed(1));
+      cross.style.display = '';
+    }
+    if (tip) {
+      tip.innerHTML = '<b>' + esc(window.KV_MONTHS[hit.ym] || hit.ym) + '</b>' +
+                      '<span>' + num(g.vals[hit.i]) + ' cases</span>';
+      tip.style.display = '';
+      /* place it in element space, clamped so it never leaves the panel */
+      var box = svg.getBoundingClientRect();
+      var scale = Math.min(box.width / g.W, box.height / g.H);
+      var padX = (box.width - g.W * scale) / 2;
+      var px = padX + hit.x * scale;
+      var w = tip.offsetWidth || 96;
+      tip.style.left = Math.max(2, Math.min(box.width - w - 2, px - w / 2)) + 'px';
+    }
+  }
+
+  function trendBand(svg, a, b) {
+    var g = KV.trend, rect = svg.querySelector('.kv-tsel');
+    if (!rect || !g) return;
+    if (a == null || b == null) { rect.style.display = 'none'; return; }
+    var lo = Math.min(a, b), hi = Math.max(a, b);
+    rect.setAttribute('x', (g.L + (lo - 0.5) * g.step).toFixed(1));
+    rect.setAttribute('width', ((hi - lo + 1) * g.step).toFixed(1));
+    rect.style.display = '';
+  }
+
+  function wireTrend(root) {
+    if (root.__kvTrend) return;
+    root.__kvTrend = true;
+    var drag = null;
+
+    root.addEventListener('mousemove', function (e) {
+      var svg = e.target.closest ? e.target.closest('.kv-tsvg') : null;
+      if (!svg) { drag = null; return; }
+      var hit = trendGeom(svg, e.clientX);
+      trendHover(svg, hit);
+      if (drag && hit) { drag.to = hit.i; trendBand(svg, drag.from, drag.to); }
+    });
+
+    root.addEventListener('mouseleave', function (e) {
+      var svg = root.querySelector('.kv-tsvg');
+      if (svg) { trendHover(svg, null); trendBand(svg, null, null); }
+      drag = null;
+    }, true);
+
+    root.addEventListener('mousedown', function (e) {
+      var svg = e.target.closest ? e.target.closest('.kv-tsvg') : null;
+      if (!svg || e.button !== 0) return;
+      var hit = trendGeom(svg, e.clientX);
+      if (hit) drag = { from: hit.i, to: hit.i };
+      e.preventDefault();
+    });
+
+    root.addEventListener('mouseup', function (e) {
+      var svg = e.target.closest ? e.target.closest('.kv-tsvg') : null;
+      if (!svg || !drag) { drag = null; return; }
+      var hit = trendGeom(svg, e.clientX);
+      if (!hit) { drag = null; return; }
+      var g = KV.trend;
+      var lo = Math.min(drag.from, hit.i), hi = Math.max(drag.from, hit.i);
+      var st = KV.state;
+      if (lo === hi) {
+        /* a click toggles one month */
+        var ym = g.months[lo];
+        if (st.month[ym]) delete st.month[ym]; else st.month[ym] = true;
+      } else {
+        /* a drag replaces the selection with the range, which is what a brush
+           on a time axis is expected to do */
+        st.month = {};
+        for (var i = lo; i <= hi; i++) st.month[g.months[i]] = true;
+      }
+      drag = null;
+      trendBand(svg, null, null);
+      schedule(root, window.__kvBody);
+    });
+  }
+
   /* ------------------------------------------------------------------ boot */
 
   KV.boot = function () {
@@ -1173,6 +1506,22 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
     if (!root.__kvWired) {
       root.__kvWired = true;
       root.addEventListener('click', function (e) {
+        var th = e.target.closest('th[data-sort]');
+        if (th) {
+          var col = th.getAttribute('data-sort');
+          KV.sort = (KV.sort && KV.sort.col === col && KV.sort.dir === 'asc')
+            ? { col: col, dir: 'desc' } : { col: col, dir: 'asc' };
+          return schedule(root, window.__kvBody);
+        }
+        var exp = e.target.closest('[data-export]');
+        if (exp) {
+          exportCsv(exp.getAttribute('data-export'), root);
+          return;
+        }
+        if (KV.exportText && !e.target.closest('.kv-table')) {
+          KV.exportText = ''; KV.exportMsg = '';
+          schedule(root, window.__kvBody);
+        }
         var railBtn = e.target.closest('[data-rail]');
         if (railBtn) {
           KV.railOpen = railBtn.getAttribute('data-rail') === 'toggle' ? !KV.railOpen : false;
@@ -1184,6 +1533,7 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
         var goTo = e.target.closest('[data-goto]');
         if (goTo) {
           KV.view = goTo.getAttribute('data-goto');
+          KV.exportText = ''; KV.exportMsg = '';
           return schedule(root, window.__kvBody);
         }
         /* Clicking anywhere outside an open rail closes it, the way a drawer
@@ -1249,6 +1599,8 @@ window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;window.KV_SEV=KV
          menu; Power BI may still raise its own over a custom visual, which is
          outside our control, so the map header also says the gesture exists and
          a left-click still selects. */
+      wireTrend(root);
+
       root.addEventListener('contextmenu', function (e) {
         var path = e.target.closest('path[data-region]');
         if (!path) return;

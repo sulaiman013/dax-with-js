@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const G = require('./geometry');
 
-const PAGE = 'file:///' + path.resolve(__dirname, 'fixture.html').split(path.sep).join('/');
+const PAGE = 'file:///' + path.resolve(__dirname, 'preview-page.html').split(path.sep).join('/');
 const EXP = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'expected.json'), 'utf8'));
 
 /* The visual is FitToPage on a 1920x1080 canvas. Testing at any other size
@@ -829,6 +829,198 @@ test.describe('the explanation pane', () => {
     await page.locator('.kv-ai').click();
     await expect(page.locator('.kv-aierr')).toContainText('could not be reached');
     expect(await text(page), 'the real summary survives').toMatch(/219 were recordable/);
+  });
+});
+
+test.describe('the case table and export', () => {
+  /* From char codes: a literal escape here has been eaten by the shell and
+     Python quoting layers more than once. */
+  const CRLF = String.fromCharCode(13, 10);
+  /* Parses one CSV line honouring RFC 4180 quoting, so a mechanism name with a
+     comma in it is one field rather than two. */
+  const parseCsv = (l) => {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < l.length; i++) {
+      const ch = l[i];
+      if (q) {
+        if (ch === '"' && l[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') q = false;
+        else cur += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur); return out;
+  };
+
+  test('the breakdown carries a row-level table', async ({ page }) => {
+    await open(page);
+    await toDetail(page);
+    expect(await page.locator('.kv-table thead th').count(), 'columns').toBe(9);
+    expect(await page.locator('.kv-table tbody tr').count(), 'rows capped for the DOM')
+      .toBe(300);
+    await expect(page.locator('.kv-table .kv-h3n'))
+      .toHaveText(/showing 300 of 1,492/);
+  });
+
+  test('columns sort both ways', async ({ page }) => {
+    await open(page);
+    await toDetail(page);
+    const firstDaysAway = async () =>
+      n(await page.locator('.kv-table tbody tr').first().locator('td').nth(7).innerText());
+    await page.locator('th[data-sort="da"]').click(); await settle(page);
+    const asc = await firstDaysAway();
+    await page.locator('th[data-sort="da"]').click(); await settle(page);
+    const desc = await firstDaysAway();
+    expect(desc).toBeGreaterThan(asc);
+  });
+
+  test('the export is well formed CSV covering every filtered row', async ({ page }) => {
+    /* Not just the 300 the table draws: the export is the whole selection. */
+    await open(page);
+    await toDetail(page);
+    await page.locator('[data-export="copy"]').click();
+    await settle(page);
+    const raw = await page.evaluate(() => window.__KV.exportText);
+
+    expect(raw.indexOf(CRLF), 'rows separated by CRLF').toBeGreaterThan(0);
+    const lines = raw.split(CRLF).filter((l) => l.length);
+    expect(lines.length, 'header plus every case').toBe(EXP.all.cases + 1);
+    const widths = [...new Set(lines.map((l) => parseCsv(l).length))];
+    expect(widths, 'every row has the same field count').toEqual([9]);
+    /* A mechanism like "Fall on same level, slip or trip" carries a comma and
+       must be quoted, or every field after it shifts by one. */
+    expect(lines.filter((l) => l.indexOf('"') >= 0).length,
+      'rows that needed quoting').toBeGreaterThan(100);
+  });
+
+  test('the export follows the selection', async ({ page }) => {
+    await open(page);
+    /* Drill into the region expected.json measured, so the count compares
+       against the oracle rather than against a number typed here. */
+    const svg = await page.evaluate((rk) => Object.keys(window.KV_SVG_TO_KEY)
+      .find((k) => window.KV_SVG_TO_KEY[k].includes(rk)), EXP.topRegion);
+    const name = await page.evaluate((rk) => window.KV_REGIONS[rk].name, EXP.topRegion);
+    await toDetail(page, svg);
+    await page.locator('[data-export="copy"]').click();
+    await settle(page);
+    const raw = await page.evaluate(() => window.__KV.exportText);
+    const lines = raw.split(CRLF).filter((l) => l.length);
+    expect(lines.length).toBe(EXP.region.cases + 1);
+    expect(lines[1]).toContain(name);
+  });
+
+  test('export falls back to text a reader can copy by hand', async ({ page }) => {
+    /* Whether a sandboxed iframe may start a download is decided by the host's
+       sandbox flags, which we neither see nor control, and a blocked download
+       fails silently. The textarea is the path that cannot fail. */
+    await open(page);
+    await toDetail(page);
+    await page.locator('[data-export="copy"]').click();
+    await settle(page);
+    await expect(page.locator('.kv-expbox')).toBeVisible();
+    const shown = await page.locator('.kv-expbox').inputValue();
+    expect(shown.length).toBeGreaterThan(1000);
+    await expect(page.locator('.kv-expmsg')).toContainText('1,492 rows');
+  });
+});
+
+test.describe('the trend as a filter', () => {
+  const svgBox = (page) => page.locator('.kv-tsvg').boundingBox();
+
+  test('hovering reads out the month under the pointer', async ({ page }) => {
+    await open(page);
+    await toDetail(page);
+    const b = await svgBox(page);
+    await page.mouse.move(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await page.waitForTimeout(120);
+    const tip = await page.locator('.kv-tt').innerText();
+    expect(tip, 'month and count').toMatch(/\w+ \d{4}[\s\S]*cases/);
+    /* A vertical line has no width, so isVisible() is the wrong check here. */
+    const cross = await page.evaluate(() => {
+      const c = document.querySelector('.kv-tcross');
+      return { display: getComputedStyle(c).display, x1: c.getAttribute('x1') };
+    });
+    expect(cross.display).not.toBe('none');
+    expect(Number(cross.x1)).toBeGreaterThan(0);
+
+    await page.mouse.move(b.x + 5, b.y - 50);
+    await page.waitForTimeout(120);
+    expect(await page.evaluate(() =>
+      document.querySelector('.kv-tt').style.display), 'tooltip hides').toBe('none');
+  });
+
+  test('clicking a point filters to that month and toggles off', async ({ page }) => {
+    await open(page);
+    await toDetail(page);
+    const all = n(await page.locator('.kv-kpi strong').first().innerText());
+    const b = await svgBox(page);
+    await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await settle(page);
+    expect(await page.evaluate(() => Object.keys(window.__KV.state.month).length)).toBe(1);
+    const one = n(await page.locator('.kv-kpi strong').first().innerText());
+    expect(one).toBeLessThan(all);
+    expect(one).toBeGreaterThan(0);
+
+    await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await settle(page);
+    expect(await page.evaluate(() => Object.keys(window.__KV.state.month).length)).toBe(0);
+    expect(n(await page.locator('.kv-kpi strong').first().innerText())).toBe(all);
+  });
+
+  test('dragging selects a range of months', async ({ page }) => {
+    await open(page);
+    await toDetail(page);
+    const b = await svgBox(page);
+    await page.mouse.move(b.x + b.width * 0.30, b.y + b.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width * 0.60, b.y + b.height * 0.5, { steps: 6 });
+    await page.mouse.up();
+    await settle(page);
+    const picked = await page.evaluate(() => Object.keys(window.__KV.state.month).length);
+    expect(picked, 'a range, not a single point').toBeGreaterThan(3);
+    expect(await page.locator('.kv-tband').count(), 'selection is shaded').toBe(picked);
+  });
+
+  test('the trend keeps every month on screen while one is selected', async ({ page }) => {
+    /* Same self-exclusion rule as the bar panels: filtering the trend by its own
+       selection would collapse it to one point with no way back. */
+    await open(page);
+    await toDetail(page);
+    const before = await page.locator('.kv-tdot').count();
+    const b = await svgBox(page);
+    await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await settle(page);
+    expect(await page.locator('.kv-tdot').count()).toBe(before);
+    expect(await page.locator('.kv-tdot.on').count()).toBe(1);
+  });
+
+  test('a month selection narrows the exposure denominator too', async ({ page }) => {
+    /* Month IS a property of exposure, unlike body region, so hours must follow
+       it or the rate would divide by the whole period. */
+    await open(page);
+    await toDetail(page);
+    const b = await svgBox(page);
+    await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await settle(page);
+    const k = await kpis(page);
+    expect(k['TRIR'].sub, 'no caveat: hours follow a month').toBe('per 200,000 hours');
+    const trir = n(k['TRIR'].value);
+    const naive = (n(k['Recordable'].value) * 200000) / EXP.all.hours;
+    expect(trir, 'hours were filtered as well').toBeGreaterThan(naive * 2);
+  });
+
+  test('the month selection reaches the export', async ({ page }) => {
+    await open(page);
+    await toDetail(page);
+    const b = await svgBox(page);
+    await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.5);
+    await settle(page);
+    const cases = n(await page.locator('.kv-kpi strong').first().innerText());
+    await page.locator('[data-export="copy"]').click();
+    await settle(page);
+    const raw = await page.evaluate(() => window.__KV.exportText);
+    expect(raw.split(String.fromCharCode(13, 10)).filter((l) => l.length).length).toBe(cases + 1);
   });
 });
 
