@@ -71,6 +71,11 @@ for r in read('dim_date.csv'):
 
 # --- assemble --------------------------------------------------------------
 
+AI = {}
+_ai = os.path.join(HERE, 'ai-baked.json')
+if os.path.exists(_ai):
+    AI = json.load(io.open(_ai, encoding='utf-8'))
+
 geometry = io.open(os.path.join(HERE, 'body-baked.js'), encoding='utf-8').read()
 renderer = io.open(os.path.join(HERE, 'bodymap.src.js'), encoding='utf-8').read()
 
@@ -89,6 +94,11 @@ out.write('var KV_BU=%s;\n' % j(BU))
 out.write('var KV_SHIFT=%s;\n' % j(SHIFT))
 out.write('var KV_WCLASS=%s;\n' % j(WCLASS))
 out.write('var KV_MONTHS=%s;\n' % j(MONTHS))
+# Model-written explanations, generated once by bake_ai.py and shipped as data.
+# This is the only way the model layer can appear in a published report: a key
+# placed in a measure is readable by anyone who opens the report, so there is no
+# safe way to call an API at render time from inside Power BI.
+out.write('var KV_AI=%s;\n' % j(AI))
 # The renderer reads these off window, and `var` at top level of the iframe
 # document does land on window, but being explicit survives any future wrapper.
 out.write('window.BODY_VIEWBOX=BODY_VIEWBOX;window.BODY_SHAPES=BODY_SHAPES;\n')
@@ -98,7 +108,7 @@ out.write('window.KV_REGIONS=KV_REGIONS;window.KV_SVG_TO_KEY=KV_SVG_TO_KEY;'
           'window.KV_SEV=KV_SEV;window.KV_MECH=KV_MECH;window.KV_ROLE=KV_ROLE;'
           'window.KV_SITE=KV_SITE;window.KV_SITE_BU=KV_SITE_BU;window.KV_BU=KV_BU;'
           'window.KV_SHIFT=KV_SHIFT;window.KV_WCLASS=KV_WCLASS;'
-          'window.KV_MONTHS=KV_MONTHS;\n')
+          'window.KV_MONTHS=KV_MONTHS;window.KV_AI=KV_AI;\n')
 out.write(renderer)
 
 runtime = out.getvalue()
@@ -114,6 +124,7 @@ print('  severity classes        %d' % len(SEV))
 print('  mechanisms              %d' % len(MECH))
 print('  job roles               %d' % len(ROLE))
 print('  months                  %d' % len(MONTHS))
+print('  baked AI explanations   %d' % len(AI))
 print('  geometry                %6d chars' % len(geometry))
 print('  renderer                %6d chars' % len(renderer))
 print('  runtime.js              %6d chars' % len(runtime))

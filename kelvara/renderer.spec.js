@@ -39,6 +39,43 @@ async function settle(page) {
     (r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 
+/* The breakdown panels moved to the detail view, reached by right-clicking a
+   region. Tests that assert on a panel have to go there first. */
+async function toDetail(page, region) {
+  if (region) {
+    await page.locator('#kv-figure path[data-region="' + region + '"]')
+      .first().click({ button: 'right', force: true });
+  } else {
+    /* No region: the Breakdown control opens the same view across everything,
+       which is what most of these assertions want. */
+    await page.locator('.kv-drill').click();
+  }
+  await settle(page);
+}
+
+/* Filters live in a drawer on the left rail rather than a bar across the top. */
+/* Clear all lives in the rail drawer now, so it has to be opened to reach it. */
+async function clearAll(page) {
+  await openRail(page);
+  await page.locator('.kv-reset').click();
+  await settle(page);
+}
+
+/* Back to the map, whichever view we are on. */
+async function toMap(page) {
+  if (await page.locator('.kv-back').count()) {
+    await page.locator('.kv-back').click();
+    await settle(page);
+  }
+}
+
+async function openRail(page) {
+  if (await page.locator('.kv-railpanel').count() === 0) {
+    await page.locator('[data-rail="toggle"]').click();
+    await settle(page);
+  }
+}
+
 /* Read the KPI strip into {label: {value, sub}}. */
 async function kpis(page) {
   await settle(page);
@@ -65,13 +102,18 @@ test.describe('renderer boot', () => {
 
   test('every structural block is present', async ({ page }) => {
     await open(page);
-    for (const sel of ['.kv-head h1', '.kv-bar', '.kv-kpis', '#kv-figure', '.kv-legend',
-                       '.kv-side', '.kv-trend svg', '.kv-through', '.kv-reset']) {
+    for (const sel of ['.kv-head h1', '.kv-rail', '.kv-kpis', '#kv-figure',
+                       '.kv-legend', '.kv-explain', '.kv-through']) {
       await expect(page.locator(sel).first(), sel).toBeVisible();
     }
     expect(await page.locator('.kv-kpi').count()).toBe(6);
-    expect(await page.locator('.kv-side .kv-panel').count()).toBe(4);
-    expect(await page.locator('.kv-fg').count(), 'filter groups').toBe(5);
+    /* The map view carries the figure, the explanation and the guide. The four
+       breakdowns and the trend moved to the detail view. */
+    expect(await page.locator('.kv-panel').count(), 'panels on the map view').toBe(2);
+    await expect(page.locator('.kv-guide'), 'user guide').toBeVisible();
+    expect(await page.locator('.kv-steps li').count(), 'guide steps').toBe(4);
+    await openRail(page);
+    expect(await page.locator('.kv-rg').count(), 'filter groups in the rail').toBe(5);
   });
 
   test('the whole page fits 1920x1080 with nothing cut off', async ({ page }) => {
@@ -149,6 +191,7 @@ test.describe('numbers', () => {
 
   test('the trend has one point per month of exposure', async ({ page }) => {
     await open(page);
+    await toDetail(page);
     const dots = await page.locator('.kv-trend circle').count();
     expect(dots).toBe(EXP.months.length);
   });
@@ -161,6 +204,7 @@ test.describe('numbers', () => {
 
   test('severity bars sum to the case total', async ({ page }) => {
     await open(page);
+    await toDetail(page);
     const vals = await page.$$eval('.kv-sev .kv-bv',
       (els) => els.map((e) => Number(e.firstChild.textContent.replace(/[^0-9]/g, ''))));
     expect(vals.reduce((a, b) => a + b, 0)).toBe(EXP.all.cases);
@@ -260,6 +304,7 @@ test.describe('interaction', () => {
 
   test('a severity row filters and toggles', async ({ page }) => {
     await open(page);
+    await toDetail(page);
     const row = page.locator('.kv-sev li[data-sev]').first();
     /* firstChild only: .kv-bv is "1273" followed by an <em>85%</em>, and
        reading the whole node concatenated the count with the percentage. */
@@ -273,10 +318,23 @@ test.describe('interaction', () => {
     expect(n((await kpis(page))['Cases'].value)).toBe(EXP.all.cases);
   });
 
-  test('Escape clears every selection', async ({ page }) => {
+  test('Escape walks back out one level at a time', async ({ page }) => {
+    /* Rail first, then the detail view, then the selection. A single Escape
+       that wiped everything would lose a filter set the user spent time on. */
     await open(page);
-    await page.locator('.kv-sev li[data-sev]').first().click();
+    await openRail(page);
     await page.locator('#kv-root').press('Escape');
+    await settle(page);
+    expect(await page.locator('.kv-railpanel').count(), 'rail closed first').toBe(0);
+
+    await toDetail(page, 'lowerback');
+    await page.locator('#kv-root').press('Escape');
+    await settle(page);
+    expect(await page.locator('#kv-figure').count(), 'back to the map').toBe(1);
+    await expect(page.locator('.kv-chip'), 'selection survives').toHaveCount(1);
+
+    await page.locator('#kv-root').press('Escape');
+    await settle(page);
     await expect(page.locator('.kv-chip')).toHaveCount(0);
     expect(n((await kpis(page))['Cases'].value)).toBe(EXP.all.cases);
   });
@@ -298,12 +356,13 @@ test.describe('interaction', () => {
   });
 });
 
-test.describe('the JS filter bar', () => {
+test.describe('the filter rail', () => {
   test('a site chip filters the page and the exposure denominator with it', async ({ page }) => {
     await open(page);
+    await openRail(page);
     const site = EXP.sites[0];
-    await page.locator(`.kv-f[data-fk="site"][data-fv="${site}"]`).click();
-    await expect(page.locator(`.kv-f[data-fk="site"][data-fv="${site}"]`))
+    await page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${site}"]`).click();
+    await expect(page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${site}"]`))
       .toHaveAttribute('aria-pressed', 'true');
 
     const k = await kpis(page);
@@ -321,11 +380,12 @@ test.describe('the JS filter bar', () => {
 
   test('chips are additive within a group', async ({ page }) => {
     await open(page);
+    await openRail(page);
     const [a, b] = EXP.sites;
-    await page.locator(`.kv-f[data-fk="site"][data-fv="${a}"]`).click();
+    await page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${a}"]`).click();
     const one = n((await kpis(page))['Cases'].value);
-    await page.locator(`.kv-f[data-fk="site"][data-fv="${b}"]`).click();
-    await expect(page.locator('.kv-f[data-fk="site"].on')).toHaveCount(2);
+    await page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${b}"]`).click();
+    await expect(page.locator('.kv-railpanel .kv-f[data-fk="site"].on')).toHaveCount(2);
     const two = n((await kpis(page))['Cases'].value);
     expect(two, 'two sites must be more than one').toBeGreaterThan(one);
     expect(two).toBeLessThan(EXP.all.cases);
@@ -333,9 +393,10 @@ test.describe('the JS filter bar', () => {
 
   test('clear all resets every group at once', async ({ page }) => {
     await open(page);
-    await page.locator(`.kv-f[data-fk="site"][data-fv="${EXP.sites[0]}"]`).click();
-    await page.locator('.kv-f[data-fk="shift"]').first().click();
-    await page.locator('.kv-f[data-fk="year"]').first().click();
+    await openRail(page);
+    await page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${EXP.sites[0]}"]`).click();
+    await page.locator('.kv-railpanel .kv-f[data-fk="shift"]').first().click();
+    await page.locator('.kv-railpanel .kv-f[data-fk="year"]').first().click();
     await settle(page);
     expect(await page.locator('.kv-f.on').count()).toBe(3);
     await page.locator('.kv-reset').click();
@@ -346,8 +407,12 @@ test.describe('the JS filter bar', () => {
 
   test('a year chip narrows the trend to that year', async ({ page }) => {
     await open(page);
+    await toDetail(page);
     const before = await page.locator('.kv-trend circle').count();
-    await page.locator('.kv-f[data-fk="year"]').first().click();
+    await openRail(page);
+    await page.locator('.kv-railpanel .kv-f[data-fk="year"]').first().click();
+    await settle(page);
+    await page.locator('#kv-root').press('Escape');   // close the drawer
     await settle(page);
     const after = await page.locator('.kv-trend circle').count();
     expect(after).toBeLessThan(before);
@@ -357,7 +422,13 @@ test.describe('the JS filter bar', () => {
 
   test('a filter and a region selection compose', async ({ page }) => {
     await open(page);
-    await page.locator(`.kv-f[data-fk="site"][data-fv="${EXP.sites[0]}"]`).click();
+    await openRail(page);
+    await page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${EXP.sites[0]}"]`).click();
+    await settle(page);
+    /* Clicking outside an open drawer dismisses it rather than selecting, which
+       is what a drawer should do, so close it before touching the figure. */
+    await page.locator('#kv-root').press('Escape');
+    await settle(page);
     const siteOnly = n((await kpis(page))['Cases'].value);
     await page.evaluate((rk) => {
       const svg = Object.keys(window.KV_SVG_TO_KEY)
@@ -381,6 +452,7 @@ test.describe('panel cross-filtering', () => {
   for (const [key, title] of PANELS) {
     test(`${title}: a row filters the whole page`, async ({ page }) => {
       await open(page);
+      await toDetail(page);
       const row = page.locator(`.kv-bars li[data-fk="${key}"]`).first();
       const own = await row.locator('.kv-bv').evaluate(
         (el) => Number(el.firstChild.textContent.replace(/[^0-9]/g, '')));
@@ -398,6 +470,7 @@ test.describe('panel cross-filtering', () => {
          selection. If a panel filtered itself, one click would collapse it to a
          single row and there would be no way back except Clear all. */
       await open(page);
+      await toDetail(page);
       const before = await page.locator(`.kv-bars li[data-fk="${key}"]`).count();
       await page.locator(`.kv-bars li[data-fk="${key}"]`).first().click();
       await settle(page);
@@ -409,6 +482,7 @@ test.describe('panel cross-filtering', () => {
 
     test(`${title}: rows are additive and toggle off`, async ({ page }) => {
       await open(page);
+      await toDetail(page);
       const rows = page.locator(`.kv-bars li[data-fk="${key}"]`);
       await rows.nth(0).click();
       const one = n((await kpis(page))['Cases'].value);
@@ -428,6 +502,7 @@ test.describe('panel cross-filtering', () => {
        filtered case count made the clicked row read 100% and its neighbours
        97%, of a set they are not in. */
     await open(page);
+      await toDetail(page);
     await page.locator('.kv-bars li[data-fk="role"]').first().click();
     await settle(page);
     const pcts = await page.$$eval('li[data-fk="role"] .kv-bv em',
@@ -440,13 +515,13 @@ test.describe('panel cross-filtering', () => {
 
   test('a site row and the site chip drive the same selection', async ({ page }) => {
     await open(page);
+      await toDetail(page);
     await page.locator('.kv-bars li[data-fk="site"]').first().click();
     await settle(page);
     const viaRow = await page.evaluate(() => JSON.stringify(window.__KV.state.site));
-    await page.locator('.kv-reset').click();
-    await settle(page);
+    await clearAll(page);
     const key = JSON.parse(viaRow);
-    await page.locator(`.kv-f[data-fk="site"][data-fv="${Object.keys(key)[0]}"]`).click();
+    await page.locator(`.kv-railpanel .kv-f[data-fk="site"][data-fv="${Object.keys(key)[0]}"]`).click();
     await settle(page);
     const viaChip = await page.evaluate(() => JSON.stringify(window.__KV.state.site));
     expect(viaChip).toBe(viaRow);
@@ -457,6 +532,7 @@ test.describe('panel cross-filtering', () => {
        the numerator and cannot narrow the hours. The card has to say so rather
        than print a rate that quietly mixes the two. */
     await open(page);
+      await toDetail(page);
     let k = await kpis(page);
     expect(k['TRIR'].sub).toBe('per 200,000 hours');
 
@@ -465,7 +541,10 @@ test.describe('panel cross-filtering', () => {
     expect(k['TRIR'].sub).toBe('per 200,000 hours, all exposure');
 
     /* A site filter DOES have an exposure counterpart, so no caveat. */
-    await page.locator('.kv-reset').click();
+    await clearAll(page);
+    await page.locator('#kv-root').press('Escape');
+    await settle(page);
+    await toDetail(page);
     await page.locator('.kv-bars li[data-fk="site"]').first().click();
     k = await kpis(page);
     expect(k['TRIR'].sub).toBe('per 200,000 hours');
@@ -473,19 +552,23 @@ test.describe('panel cross-filtering', () => {
 
   test('clear all resets panel selections too', async ({ page }) => {
     await open(page);
+      await toDetail(page);
     for (const key of ['mech', 'role', 'site']) {
       await page.locator(`.kv-bars li[data-fk="${key}"]`).first().click();
     }
     await settle(page);
     expect(await page.locator('.kv-bars li.on').count()).toBe(3);
-    await page.locator('.kv-reset').click();
+    await clearAll(page);
+    await page.locator('#kv-root').press('Escape');
     await settle(page);
+    await toDetail(page);
     expect(await page.locator('.kv-bars li.on').count()).toBe(0);
     expect(n((await kpis(page))['Cases'].value)).toBe(EXP.all.cases);
   });
 
   test('rows are reachable and activatable from the keyboard', async ({ page }) => {
     await open(page);
+      await toDetail(page);
     const row = page.locator('.kv-bars li[data-fk="role"]').first();
     await expect(row).toHaveAttribute('tabindex', '0');
     await row.focus();
@@ -495,8 +578,10 @@ test.describe('panel cross-filtering', () => {
 
   test('a panel selection composes with a region selection', async ({ page }) => {
     await open(page);
+    await toDetail(page);
     await page.locator('.kv-bars li[data-fk="role"]').first().click();
     const roleOnly = n((await kpis(page))['Cases'].value);
+    await toMap(page);
     await page.evaluate((rk) => {
       const svg = Object.keys(window.KV_SVG_TO_KEY)
         .find((k) => window.KV_SVG_TO_KEY[k].includes(rk));
@@ -550,12 +635,15 @@ test.describe('the explanation pane', () => {
 
   test('names every active selection, not just the last one', async ({ page }) => {
     await open(page);
+    await toDetail(page);
     await page.locator('.kv-bars li[data-fk="role"]').first().click();
     await page.locator('.kv-bars li[data-fk="site"]').first().click();
     await settle(page);
-    const t = await text(page);
     const role = await page.locator('li[data-fk="role"].on .kv-bl').innerText();
     const site = await page.locator('li[data-fk="site"].on .kv-bl').innerText();
+    await page.locator('.kv-back').click();
+    await settle(page);
+    const t = await text(page);
     expect(t).toContain(role);
     expect(t).toContain(site);
   });
@@ -563,7 +651,9 @@ test.describe('the explanation pane', () => {
   test('states the caveat when the denominator could not follow', async ({ page }) => {
     await open(page);
     expect(await text(page)).not.toContain('cannot narrow the hours');
+    await toDetail(page);
     await page.locator('.kv-bars li[data-fk="mech"]').first().click();
+    await page.locator('.kv-back').click();
     await settle(page);
     expect(await text(page)).toContain('cannot narrow the hours');
   });
@@ -592,10 +682,18 @@ test.describe('the explanation pane', () => {
       null,
       () => document.querySelector('#kv-figure path[data-region="skull"]')
         .dispatchEvent(new MouseEvent('click', { bubbles: true })),
-      () => document.querySelector('li[data-fk="mech"]')
-        .dispatchEvent(new MouseEvent('click', { bubbles: true })),
-      () => document.querySelector('li[data-fk="role"]')
-        .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      /* mech and role are selected from the detail view, then we come back to
+         the map where the pane lives */
+      async () => {
+        await toDetail(page);
+        await page.locator('li[data-fk="mech"]').first().click();
+        await page.locator('.kv-back').click();
+      },
+      async () => {
+        await toDetail(page);
+        await page.locator('li[data-fk="role"]').first().click();
+        await page.locator('.kv-back').click();
+      }
     ];
     /* Also with a model reply present: that state has more text than any
        other, and the reply was being generated and then clipped out of sight. */

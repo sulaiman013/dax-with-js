@@ -81,6 +81,14 @@
       region: null, sev: null,
       site: {}, bu: {}, shift: {}, wclass: {}, year: {}, mech: {}, role: {}
     },
+    /* 'map' is the reading surface: figure, KPIs, explanation. 'detail' is
+       reached by right-clicking a region and carries the breakdowns. A real
+       Power BI drill-through is impossible here, because that needs the visual
+       to build selection identities and hand one to the host, which HTML
+       Content never does. Swapping views inside the one visual gives the same
+       journey without pretending to a mechanism we do not have. */
+    view: 'map',
+    railOpen: false,
     frame: 0
   });
 
@@ -635,6 +643,121 @@
            '<div class="kv-fc">' + chips + '</div></div>';
   }
 
+  /* ---------------------------------------------------------------- guide */
+
+  /* A demonstration rather than a screen recording. A GIF of the real report
+     runs a few hundred KB, roughly 400,000 characters once base64 encoded,
+     which is a fifth of the measure ceiling spent on something that blurs when
+     the visual scales and cannot be corrected without re-recording. This is
+     about 3KB of SVG and CSS, stays sharp at any size, and is editable as text. */
+  function guide() {
+    return '<div class="kv-panel kv-guide"><h3>How to explore' +
+      '<span class="kv-h3n">this loops</span></h3>' +
+      '<svg class="kv-demo" viewBox="0 0 320 96" aria-hidden="true">' +
+        '<g class="kv-dfig" fill="#f0e2c4" stroke="#cbbb9e" stroke-width="1.2">' +
+          '<circle cx="42" cy="20" r="9"/>' +
+          '<rect x="31" y="31" width="22" height="26" rx="4"/>' +
+          '<rect x="19" y="33" width="9" height="24" rx="4"/>' +
+          '<rect x="56" y="33" width="9" height="24" rx="4"/>' +
+          '<rect x="33" y="59" width="8" height="26" rx="4"/>' +
+          '<rect x="43" y="59" width="8" height="26" rx="4"/>' +
+        '</g>' +
+        '<rect class="kv-dhit" x="31" y="31" width="22" height="26" rx="4"/>' +
+        '<g class="kv-dcards">' +
+          '<rect x="96" y="14" width="98" height="15" rx="3"/>' +
+          '<rect x="96" y="35" width="78" height="15" rx="3"/>' +
+          '<rect x="96" y="56" width="88" height="15" rx="3"/>' +
+          '<rect x="206" y="14" width="98" height="57" rx="3"/>' +
+        '</g>' +
+        /* cursor drawn as a path, not an emoji, so it renders identically
+           whatever fonts the host has */
+        '<g class="kv-dcur">' +
+          '<path d="M0 0 L0 13 L3.4 9.8 L5.6 14.6 L8 13.4 L5.8 8.8 L10.4 8.6 Z" ' +
+            'fill="#2e2a24" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>' +
+          '<circle class="kv-dring" cx="1" cy="1" r="3" fill="none" ' +
+            'stroke="#96641a" stroke-width="2"/>' +
+        '</g>' +
+      '</svg>' +
+      '<ol class="kv-steps">' +
+        '<li><b>Click</b> a body region to filter the page to it.</li>' +
+        '<li><b>Right-click</b> a region, or press <b>Breakdown</b>, for mechanisms, roles and sites.</li>' +
+        '<li><b>Filters</b> live on the left rail. The spine shows what is applied.</li>' +
+        '<li><b>Esc</b> steps back one level. Click a selected region again to clear it.</li>' +
+      '</ol></div>';
+  }
+
+  /* --------------------------------------------------------- filter rail */
+
+  /* A collapsed rail rather than a bar across the top: it buys back 86px of
+     height for the figure, which is the whole point of this layout. Collapsed
+     it still has to answer "what is filtered", so the active count and the
+     chosen values show on the spine. */
+  function railGroup(key, label, entries, sel) {
+    var chips = entries.map(function (e) {
+      var on = !!sel[e[0]];
+      return '<button class="kv-f' + (on ? ' on' : '') + '" data-fk="' + key +
+             '" data-fv="' + esc(e[0]) + '" aria-pressed="' + on + '">' +
+             esc(e[1]) + '</button>';
+    }).join('');
+    return '<div class="kv-rg"><span class="kv-fl">' + esc(label) + '</span>' +
+           '<div class="kv-rc">' + chips + '</div></div>';
+  }
+
+  function rail(p) {
+    var st = KV.state;
+    var years = {};
+    for (var i = 0; i < (p.h || []).length; i += HH) years[Math.floor(p.h[i] / 100)] = true;
+
+    var groups = [
+      ['site', 'Site', Object.keys(window.KV_SITE).map(Number).sort(function (a, b) {
+        return (window.KV_SITE[a] || '').localeCompare(window.KV_SITE[b] || '');
+      }).map(function (k) { return [k, window.KV_SITE[k]]; })],
+      ['bu', 'Business unit', (window.KV_BU || []).map(function (b) { return [b, b]; })],
+      ['shift', 'Shift', Object.keys(window.KV_SHIFT).map(function (k) {
+        return [k, window.KV_SHIFT[k]]; })],
+      ['wclass', 'Worker class', Object.keys(window.KV_WCLASS).map(function (k) {
+        return [k, window.KV_WCLASS[k]]; })],
+      ['year', 'Year', Object.keys(years).sort().map(function (y) { return [y, y]; })]
+    ];
+
+    var active = 0, summary = [];
+    var LOOK = { site: window.KV_SITE, shift: window.KV_SHIFT, wclass: window.KV_WCLASS };
+    groups.forEach(function (g) {
+      var chosen = Object.keys(st[g[0]]).filter(function (k) { return st[g[0]][k]; });
+      active += chosen.length;
+      chosen.forEach(function (k) {
+        summary.push((LOOK[g[0]] && LOOK[g[0]][k]) || k);
+      });
+    });
+
+    var spine =
+      '<button class="kv-railbtn" data-rail="toggle" aria-expanded="' + KV.railOpen +
+        '" title="Filters">' +
+        '<span class="kv-railicon" aria-hidden="true"><i></i><i></i><i></i></span>' +
+        (active ? '<span class="kv-railbadge">' + active + '</span>' : '') +
+      '</button>' +
+      '<div class="kv-railspine">' +
+        (summary.length
+          ? summary.slice(0, 6).map(function (t) {
+              return '<span class="kv-railtag">' + esc(t) + '</span>';
+            }).join('') + (summary.length > 6
+              ? '<span class="kv-railtag">+' + (summary.length - 6) + '</span>' : '')
+          : '<span class="kv-railtag kv-railnone">No filters</span>') +
+      '</div>';
+
+    var panel = KV.railOpen
+      ? '<div class="kv-railpanel"><div class="kv-railhead"><h3>Filters</h3>' +
+          '<button class="kv-railclose" data-rail="close" aria-label="Close filters">' +
+          '×</button></div>' +
+          groups.map(function (g) { return railGroup(g[0], g[1], g[2], st[g[0]]); }).join('') +
+          '<button class="kv-reset' + (active ? '' : ' off') + '" data-clear="1">' +
+          (active ? 'Clear all filters' : 'No filters applied') + '</button>' +
+        '</div>'
+      : '';
+
+    return '<div class="kv-rail' + (KV.railOpen ? ' open' : '') + '">' + spine + panel + '</div>';
+  }
+
   function filterBar(p, agg) {
     var st = KV.state;
     var siteKeys = Object.keys(window.KV_SITE).map(Number).sort(function (a, b) {
@@ -748,40 +871,58 @@
                '<span class="kv-bv">' + num(r.n) + '<em>' + dec(pct, 0) + '%</em></span></li>';
       }).join('') : '<li class="kv-empty">No cases.</li>') + '</ul></div>';
 
-    root.innerHTML =
+    /* Right-click drills into one region, but the breakdowns are also worth
+       seeing across everything, so the view does not require a selection. */
+    var detail = KV.view === 'detail';
+    var scope = KV.state.region != null ? regionName(KV.state.region) : 'All body regions';
+
+    var head =
       '<div class="kv-head">' +
-        '<div><h1>' + esc(meta.title || 'Injury site surveillance') + '</h1>' +
-        '<p>' + esc(meta.caption || '') + '</p></div>' +
+        '<div class="kv-head-l">' +
+          (detail
+            ? '<button class="kv-back" data-goto="map">' +
+              '<span aria-hidden="true">&#8592;</span> Back to the map</button>'
+            : '') +
+          '<div><h1>' + esc(detail ? scope : (meta.title || 'Injury site surveillance')) + '</h1>' +
+          '<p>' + esc(detail
+            ? 'Breakdown. ' + (meta.caption || '')
+            : (meta.caption || '')) + '</p></div>' +
+        '</div>' +
         '<div class="kv-head-r">' + chip +
         '<span class="kv-through">Data through ' + esc(meta.through || '') + '</span></div>' +
-      '</div>' +
-      filterBar(p, agg) +
-      kpis(agg, meta) +
-      '<div class="kv-body">' +
-        '<div class="kv-map"><div class="kv-maphead"><h3>Injury site</h3>' +
-          '<span class="kv-hint">' +
-          (KV.state.region != null ? 'Showing ' + esc(regionName(KV.state.region))
-                                   : 'Select a body region to filter') +
-          '</span></div>' + figure(agg) +
-          '<div class="kv-legend"><span>0</span>' +
-          [0, .2, .4, .6, .8, 1].map(function (t) {
-            return '<i style="background:' + ramp(t) + '"></i>';
-          }).join('') + '<span>' + num(agg.maxRegion) + ' cases</span></div>' +
-          unmapped(agg) +
-        '</div>' +
-        '<div class="kv-side kv-col2">' + sevHtml +
-          bars('Cases by site', topRows(agg.bySite, window.KV_SITE, 8),
-               sumOf(agg.bySite), PALETTE.warn, 'site') +
-        '</div>' +
-        '<div class="kv-side kv-col3">' +
-          bars('Top mechanisms', topRows(agg.byMech, window.KV_MECH, 8),
-               sumOf(agg.byMech), PALETTE.accent, 'mech') +
-          bars('Most exposed roles', topRows(agg.byRole, window.KV_ROLE, 8),
-               sumOf(agg.byRole), PALETTE.good, 'role') +
-        '</div>' +
-        trend(agg) +
-        explainPanel(p, agg) +
       '</div>';
+
+    var body = detail
+      ? '<div class="kv-detail">' +
+          sevHtml +
+          bars('Cases by site', topRows(agg.bySite, window.KV_SITE, 9),
+               sumOf(agg.bySite), PALETTE.warn, 'site') +
+          bars('Top mechanisms', topRows(agg.byMech, window.KV_MECH, 9),
+               sumOf(agg.byMech), PALETTE.accent, 'mech') +
+          bars('Most exposed roles', topRows(agg.byRole, window.KV_ROLE, 9),
+               sumOf(agg.byRole), PALETTE.good, 'role') +
+          trend(agg) +
+        '</div>'
+      : '<div class="kv-body">' +
+          '<div class="kv-map"><div class="kv-maphead"><h3>Injury site</h3>' +
+            '<span class="kv-hint">' +
+            (KV.state.region != null
+              ? esc(regionName(KV.state.region)) + ' selected'
+              : 'Click a region to filter') +
+            '</span>' +
+            '<button class="kv-drill" data-goto="detail">Breakdown ' +
+            '<span aria-hidden="true">&#8594;</span></button>' +
+            '</div>' + figure(agg) +
+            '<div class="kv-legend"><span>0</span>' +
+            [0, .2, .4, .6, .8, 1].map(function (t) {
+              return '<i style="background:' + ramp(t) + '"></i>';
+            }).join('') + '<span>' + num(agg.maxRegion) + ' cases</span></div>' +
+            unmapped(agg) +
+          '</div>' +
+          '<div class="kv-side">' + explainPanel(p, agg) + guide() + '</div>' +
+        '</div>';
+
+    root.innerHTML = rail(p) + '<div class="kv-main">' + head + kpis(agg, meta) + body + '</div>';
   }
 
   function schedule(root, p) {
@@ -1005,11 +1146,33 @@
     if (!root.__kvWired) {
       root.__kvWired = true;
       root.addEventListener('click', function (e) {
+        var railBtn = e.target.closest('[data-rail]');
+        if (railBtn) {
+          KV.railOpen = railBtn.getAttribute('data-rail') === 'toggle' ? !KV.railOpen : false;
+          return schedule(root, window.__kvBody);
+        }
+        /* NOT data-view: every figure path already carries data-view="front"
+             or "back" for the geometry tests, so this selector matched every
+             region click and set the view to "back". */
+        var goTo = e.target.closest('[data-goto]');
+        if (goTo) {
+          KV.view = goTo.getAttribute('data-goto');
+          return schedule(root, window.__kvBody);
+        }
+        /* Clicking anywhere outside an open rail closes it, the way a drawer
+           should behave. Checked before the other targets so a stray click on
+           the canvas dismisses rather than selects. */
+        if (KV.railOpen && !e.target.closest('.kv-rail')) {
+          KV.railOpen = false;
+          schedule(root, window.__kvBody);
+          return;
+        }
         var clear = e.target.closest('[data-clear]');
         if (clear) {
           KV.state.region = null;
           KV.state.sev = null;
           SETS.forEach(function (k) { KV.state[k] = {}; });
+          KV.view = 'map';
           return schedule(root, window.__kvBody);
         }
         if (e.target.closest('[data-ai]')) {
@@ -1050,10 +1213,27 @@
           var rk = keys[0];
           if (rk != null) {
             KV.state.region = KV.state.region === rk ? null : rk;
+            if (KV.state.region == null) KV.view = 'map';
             schedule(root, window.__kvBody);
           }
         }
       });
+      /* Right-click is the drill gesture. preventDefault stops the iframe's own
+         menu; Power BI may still raise its own over a custom visual, which is
+         outside our control, so the map header also says the gesture exists and
+         a left-click still selects. */
+      root.addEventListener('contextmenu', function (e) {
+        var path = e.target.closest('path[data-region]');
+        if (!path) return;
+        e.preventDefault();
+        var keys = window.KV_SVG_TO_KEY[path.getAttribute('data-region')] || [];
+        if (keys[0] == null) return;
+        KV.state.region = keys[0];
+        KV.view = 'detail';
+        KV.railOpen = false;
+        schedule(root, window.__kvBody);
+      });
+
       root.addEventListener('keydown', function (e) {
         /* Rows are role="button" and focusable, so Enter and Space must do what
            a click does; otherwise the panels are mouse-only. */
@@ -1064,6 +1244,14 @@
             b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             return;
           }
+        }
+        if (e.key === 'Escape' && KV.railOpen) {
+          KV.railOpen = false;
+          return schedule(root, window.__kvBody);
+        }
+        if (e.key === 'Escape' && KV.view === 'detail') {
+          KV.view = 'map';
+          return schedule(root, window.__kvBody);
         }
         if (e.key === 'Escape') {
           KV.state.region = null;
