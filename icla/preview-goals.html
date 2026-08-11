@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>ICLA Goals - local harness</title>
-<style>body{margin:0;background:#ddd}#stage{width:1500px;margin:0 auto;background:#fff}</style>
+<style>html,body{height:100%;margin:0;background:#ddd}</style>
 </head>
 <body>
-<div id="stage">
-  <!-- exactly what the DAX measure emits -->
+<!-- exactly what the DAX measure emits (root directly in body, like the real visual iframe) -->
   <div id="icg-root"></div>
   <script>
     /* fixture payload = real icall_gold ICLA values, 2026-08-11 */
@@ -24,7 +23,6 @@
     if (window.ICGOALS && window.ICGOALS.render) { window.ICGOALS.render(); }
   </script>
   <script src="icla-goals.js"></script>
-</div>
 <script>
   /* simulate the HTML Content visual's re-injection on cross-filter */
   window.addEventListener('load', function () {
