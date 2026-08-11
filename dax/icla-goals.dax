@@ -17,7 +17,7 @@
 
 Goals Page HTML =
 VAR CdnUrl =
-    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.1/icla/icla-goals.js"
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.2/icla/icla-goals.js"
 
 // -- calendar ---------------------------------------------------------------
 VAR _today = TODAY ()

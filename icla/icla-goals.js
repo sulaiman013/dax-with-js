@@ -2,7 +2,7 @@
  * Inspired Closets LA - "2026 Goals" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.1/icla/icla-goals.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.2/icla/icla-goals.js
  * License : MIT
  *
  * Fourteen goal-vs-actual KPI tiles (Marye Silvers' 2026 goal framework),
@@ -77,7 +77,7 @@
     '.icg-hero{grid-column:span 2}',
     '.icg-label{font-size:11px;font-weight:600;color:', T.sec, '}',
     '.icg-value{font-size:25px;font-weight:600;line-height:1.05;letter-spacing:-.01em;',
-      "font-family:'DIN','Segoe UI',system-ui,sans-serif}",
+      "font-family:'Segoe UI',system-ui,sans-serif}",
     '.icg-hero .icg-value{font-size:46px;font-weight:700}',
     '.icg-value small{font-size:.55em;color:', T.faint, ';font-weight:500}',
     '.icg-goal{font-size:11px;color:', T.sec, '}',
@@ -268,6 +268,6 @@
     });
   }
 
-  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.1' };
+  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.2' };
   render();
 })();
