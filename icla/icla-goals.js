@@ -2,7 +2,7 @@
  * Inspired Closets LA - "2026 Goals" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.3/icla/icla-goals.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.4/icla/icla-goals.js
  * License : MIT
  *
  * Fourteen goal-vs-actual KPI tiles (Marye Silvers' 2026 goal framework),
@@ -15,12 +15,14 @@
  *   doy/diy   day of year / days in year          (pace for THIS YEAR)
  *   dom/dim   day of month / days in month        (pace for THIS MONTH)
  *   wde       days elapsed in Sunday-start week   (pace for THIS WEEK, of 7)
- *   revY/revM/revW    sold revenue, CENTS         (ICLA basis: Created Date)
+ *   revY/revM/revW    sold revenue, CENTS (by Original Project Sold Date -
+ *                     the Salesforce Community standard)
  *   jobsY/jobsM/jobsW sold project counts
  *   faY/faM/faW       FIRST appointments (Is First Appointment = 1)
  *   leadsY/leadsW     new leads
  *   desM              distinct designers with an opportunity this month
- *   soldM/decM        sold / decided (Sold+Lost+Dead Lead) this month
+ *   soldM/decM        Community closing inputs: sold-by-sold-date this month
+ *                     / created this month excluding Dead Lead
  *   g: goals, same units:
  *      revY/revM/revW (cents), jobsY/jobsM/jobsW, faY/faW, leadsY,
  *      des, closeBp (>=, basis points), avgC (>=, cents), apdW (>=, per wk),
@@ -209,7 +211,7 @@
         valueHtml: closingBp == null ? '–' : pctBp(closingBp),
         goalHtml: '≥ ' + pctBp(g.closeBp), thresh: 1,
         att: closingBp == null ? 0 : closingBp / g.closeBp,
-        sub: num(d.soldM) + ' of ' + num(d.decM) + ' decided' + (d.decM < 10 ? ' · small base' : '') },
+        sub: num(d.soldM) + ' sold ÷ ' + num(d.decM) + ' created' + (d.decM < 10 ? ' · small base' : '') },
       { label: 'Average sale',
         valueHtml: avgC == null ? '–' : money(avgC),
         titleAttr: avgC == null ? '' : moneyFull(avgC),
@@ -240,11 +242,11 @@
       '<div class="icg-eyebrow">Inspired Closets · Los Angeles</div>' +
       '<div class="icg-title">2026 Goals <span>· goal vs. actual</span></div></div>' +
       '<div class="icg-asof">Data as of <b>' + asofNice + '</b><br>' +
-      'Basis: opportunity Created Date · week starts Sunday</div></div>' +
+      'Basis: sold date (Salesforce Community standard) · week starts Sunday</div></div>' +
       year + month + week +
-      '<div class="icg-notes"><b>Definitions.</b> Appointments = first appointments (initial consultations). ' +
-      'Closing % = sold ÷ decided (Sold + Lost + Dead Lead). Average sale = sold $ ÷ jobs sold. ' +
-      'Lead → appt = first appointments ÷ new leads, same window. ' +
+      '<div class="icg-notes"><b>Definitions.</b> Sold $ and jobs count by Original Project Sold Date, matching the Salesforce Community. ' +
+      'Closing % = sold in period ÷ created in period, excluding Dead Lead (Community formula). ' +
+      'Average sale = sold $ ÷ jobs sold. Appointments = first appointments; leads and appointments count by their own dates. ' +
       'Pace mark (▏) = where the goal says you should be today.</div>';
   }
 
@@ -269,6 +271,6 @@
     });
   }
 
-  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.3' };
+  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.4' };
   render();
 })();

@@ -9,15 +9,18 @@
 // The JS derives closing %, average sale, appts/designer, lead->appt, every
 // pace ratio, every formatted string, every colour.
 //
-// ICLA basis: opportunity Created Date (NOT sold date - ICLA is the one
-// created-basis franchise). Week starts Sunday, matching the model's
-// "Start of Week" convention. Goals (Marye Silvers, Aug 2026) live in the
-// VAR block below - one place to edit when the plan changes.
+// BASIS (2026-08-12, per owner directive "match the Salesforce Community"):
+// Sold $ / jobs count by Original Project Sold Date (Community standard).
+// Closing % = sold-in-period / created-in-period excluding Dead Lead (the
+// Community formula, same as ICDF commit da9c140). Leads/appointments count
+// by their own dates. Week starts Sunday. NOTE: the weekly PDF briefing
+// still reports ICLA on Created Date - separate system, separate directive.
+// Goals (Marye Silvers, Aug 2026) live in the VAR block below.
 // ============================================================================
 
 Goals Page HTML =
 VAR CdnUrl =
-    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.3/icla/icla-goals.js"
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.4/icla/icla-goals.js"
 
 // -- calendar ---------------------------------------------------------------
 VAR _today = TODAY ()
@@ -51,43 +54,43 @@ VAR gL2aBp = 3200           // >= 32%
 VAR _revY =
     CALCULATE (
         SUM ( Salesforce_Data[Amount] ),
-        Salesforce_Data[Revised Stage] = "Sold",
-        Salesforce_Data[Created Date] >= _y0 && Salesforce_Data[Created Date] < _tomorrow,
+        Salesforce_Data[Original Project Sold Date] >= _y0
+            && Salesforce_Data[Original Project Sold Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
 VAR _revM =
     CALCULATE (
         SUM ( Salesforce_Data[Amount] ),
-        Salesforce_Data[Revised Stage] = "Sold",
-        Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
+        Salesforce_Data[Original Project Sold Date] >= _m0
+            && Salesforce_Data[Original Project Sold Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
 VAR _revW =
     CALCULATE (
         SUM ( Salesforce_Data[Amount] ),
-        Salesforce_Data[Revised Stage] = "Sold",
-        Salesforce_Data[Created Date] >= _w0 && Salesforce_Data[Created Date] < _tomorrow,
+        Salesforce_Data[Original Project Sold Date] >= _w0
+            && Salesforce_Data[Original Project Sold Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
 VAR _jobsY =
     CALCULATE (
         COUNTROWS ( Salesforce_Data ),
-        Salesforce_Data[Revised Stage] = "Sold",
-        Salesforce_Data[Created Date] >= _y0 && Salesforce_Data[Created Date] < _tomorrow,
+        Salesforce_Data[Original Project Sold Date] >= _y0
+            && Salesforce_Data[Original Project Sold Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
 VAR _jobsM =
     CALCULATE (
         COUNTROWS ( Salesforce_Data ),
-        Salesforce_Data[Revised Stage] = "Sold",
-        Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
+        Salesforce_Data[Original Project Sold Date] >= _m0
+            && Salesforce_Data[Original Project Sold Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
 VAR _jobsW =
     CALCULATE (
         COUNTROWS ( Salesforce_Data ),
-        Salesforce_Data[Revised Stage] = "Sold",
-        Salesforce_Data[Created Date] >= _w0 && Salesforce_Data[Created Date] < _tomorrow,
+        Salesforce_Data[Original Project Sold Date] >= _w0
+            && Salesforce_Data[Original Project Sold Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
 VAR _faY =
@@ -131,11 +134,11 @@ VAR _desM =
         Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
-VAR _soldM = _jobsM
+VAR _soldM = _jobsM    // sold-by-sold-date in month (Community numerator)
 VAR _decM =
     CALCULATE (
         COUNTROWS ( Salesforce_Data ),
-        Salesforce_Data[Revised Stage] IN { "Sold", "Lost", "Dead Lead" },
+        Salesforce_Data[Revised Stage] <> "Dead Lead",
         Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
         REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
     )
