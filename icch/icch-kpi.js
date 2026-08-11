@@ -2,7 +2,7 @@
  * Inspired Closets Chicago - "KPI Overview" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.0.1/icch/icch-kpi.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.1.0/icch/icch-kpi.js
  * License : MIT
  *
  * Fourteen KPI tiles, NO goal framework (ICCH has not set goals): each tile
@@ -13,6 +13,8 @@
  * DATA CONTRACT - window.__icchKpi  (every value an INTEGER, locale-safe)
  * ---------------------------------------------------------------------------
  *   asof 'YYYY-MM-DD' · doy/diy · dom/dim · wde (Sunday-week day count)
+ *   s: 12-point spark series (oldest->newest): rev12/jobs12/fa12/leads12
+ *      (monthly) + revw12/jobsw12/faw12 (weekly). Money series in DOLLARS.
  *   cur / pri, same keys each:
  *     revY/revM/revW  sold revenue, CENTS (by Original Project Sold Date -
  *                     the Salesforce Community standard)
@@ -70,10 +72,14 @@
     '.ick-rule{flex:1;height:1px;background:', T.line, '}',
     '.ick-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:14px;min-height:0}',
     '.ick-tile{background:', T.card, ';border:1px solid ', T.line, ';border-radius:10px;',
-      'padding:13px 15px 13px;display:flex;flex-direction:column;gap:6px;min-width:0;overflow:hidden}',
+      'padding:13px 15px 13px;display:flex;flex-direction:column;gap:6px;min-width:0;overflow:hidden;position:relative}',
     '.ick-hero{grid-column:span 2}',
-    '.ick-label{font-size:11px;font-weight:600;color:', T.sec, '}',
-    '.ick-value{margin-top:auto;font-size:clamp(22px,3.4vh,30px);font-weight:600;line-height:1.05;letter-spacing:-.01em;',
+    '.ick-label{font-size:11px;font-weight:600;color:', T.sec, ';display:flex;align-items:center;justify-content:space-between;gap:6px}',
+    '.ick-ico{flex:none;width:26px;height:26px;border-radius:8px;background:', T.goodTk, ';color:', T.goodTx, ';display:flex;align-items:center;justify-content:center}',
+    '.ick-ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}',
+    '.ick-spark{position:absolute;left:15px;right:15px;bottom:36px;height:24px;opacity:.5;pointer-events:none;z-index:0}',
+    '.ick-spark svg{width:100%;height:100%;display:block}',
+    '.ick-value{position:relative;z-index:1;margin-top:auto;font-size:clamp(22px,3.4vh,30px);font-weight:600;line-height:1.05;letter-spacing:-.01em;',
       "font-family:'Segoe UI',system-ui,sans-serif}",
     '.ick-hero .ick-value{font-size:clamp(30px,5vh,44px);font-weight:700}',
     '.ick-value small{font-size:.55em;color:', T.faint, ';font-weight:500}',
@@ -82,7 +88,7 @@
     '.ick-bars{margin-top:auto;display:flex;flex-direction:column;gap:2px}',
     '.ick-bar{position:relative;height:7px;border-radius:4px;background:transparent}',
     '.ick-bar div{position:absolute;top:0;bottom:0;left:0;border-radius:4px;min-width:2px}',
-    '.ick-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:1px;min-height:22px}',
+    '.ick-foot{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:1px;min-height:20px}',
     '.ick-sub{font-size:10.5px;color:', T.faint, ';font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.ick-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;',
       'padding:2px 8px;border-radius:999px;white-space:nowrap;flex:none}',
@@ -91,7 +97,7 @@
     '.ick-notes b{color:', T.ink, '}',
     '@media(max-width:900px){.ick-grid{grid-template-columns:repeat(2,1fr)}}',
     /* compact mode for short iframes: chip already carries the delta */
-    '@media(max-height:759px){.ick-bars,.ick-prev{display:none}',
+    '@media(max-height:759px){.ick-bars,.ick-prev{display:none}.ick-spark{bottom:30px;height:18px}',
       '.ick-tile{padding:9px 12px;gap:3px}.ick-foot{min-height:18px}',
       '.ick-value{font-size:clamp(18px,3vh,24px)}',
       '.ick-hero .ick-value{font-size:clamp(24px,4.2vh,34px)}',
@@ -133,6 +139,33 @@
     return '<span class="ick-chip" style="color:' + col[0] + ';background:' + col[1] + '">' + glyph + ' ' + txt + '</span>';
   }
 
+
+  var ICONS = {
+    dollar: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/><path d="M10 5.5v9M12.6 7.4c-.5-.8-1.5-1.3-2.6-1.3-1.4 0-2.5.8-2.5 1.9 0 2.5 5 1.4 5 3.9 0 1.1-1.1 1.9-2.5 1.9-1.1 0-2.1-.5-2.6-1.3"/></svg>',
+    tag: '<svg viewBox="0 0 20 20"><path d="M3 3h6l8 8-6 6-8-8z"/><circle cx="7" cy="7" r="1.4"/></svg>',
+    cal: '<svg viewBox="0 0 20 20"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M3 8.5h14M7 3v3M13 3v3M7.6 12.4l1.7 1.7 3.1-3.6"/></svg>',
+    userplus: '<svg viewBox="0 0 20 20"><circle cx="8" cy="7" r="2.8"/><path d="M3.2 16.5c.5-2.6 2.4-4.3 4.8-4.3s4.3 1.7 4.8 4.3M14.5 8h4M16.5 6v4"/></svg>',
+    users: '<svg viewBox="0 0 20 20"><circle cx="7" cy="7.5" r="2.6"/><circle cx="13.5" cy="8.5" r="2.1"/><path d="M2.8 16.3c.4-2.4 2.1-4 4.2-4s3.8 1.6 4.2 4M12 12.9c1.9.2 3.4 1.6 3.8 3.4"/></svg>',
+    pct: '<svg viewBox="0 0 20 20"><path d="M5.5 14.5l9-9"/><circle cx="6.6" cy="6.6" r="1.9"/><circle cx="13.4" cy="13.4" r="1.9"/></svg>',
+    receipt: '<svg viewBox="0 0 20 20"><path d="M5.5 3h9v14l-1.8-1.3-1.6 1.3-1.6-1.3L7.9 17l-2.4-1.3z"/><path d="M8 7h4M8 10h4"/></svg>'
+  };
+  function spark(series) {
+    if (!series || series.length < 2) return '';
+    var n = series.length, mx = Math.max.apply(null, series), mn = Math.min.apply(null, series);
+    if (mx === mn) mx = mn + 1;
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var x = (i / (n - 1)) * 96 + 2;
+      var y = 24 - ((series[i] - mn) / (mx - mn)) * 20;
+      pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+    }
+    var last = pts[pts.length - 1].split(',');
+    return '<div class="ick-spark"><svg viewBox="0 0 100 28" preserveAspectRatio="none">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + T.cur + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
+      '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="2.4" fill="' + T.cur + '" stroke="' + T.card + '" stroke-width="1.4"/>' +
+      '</svg></div>';
+  }
+
   function bars(cur, pri) {
     var mx = Math.max(cur, pri, 1);
     return '<div class="ick-bars">' +
@@ -154,12 +187,14 @@
       : 'prior: <b>' + show(t.pri) + '</b>';
     var barCur = t.fmt === 'pct' || t.fmt === 'dec' ? (t.cur || 0) * 1000 : (t.cur || 0);
     var barPri = t.fmt === 'pct' || t.fmt === 'dec' ? (t.pri || 0) * 1000 : (t.pri || 0);
+    var ico = t.icon ? '<span class="ick-ico">' + ICONS[t.icon] + '</span>' : '';
+    var mid = t.series ? spark(t.series) : bars(barCur, barPri);
     return '<div class="ick-tile' + (t.hero ? ' ick-hero' : '') + '"' +
       (t.titleAttr ? ' title="' + t.titleAttr + '"' : '') + '>' +
-      '<div class="ick-label">' + t.label + '</div>' +
+      '<div class="ick-label"><span>' + t.label + '</span>' + ico + '</div>' +
       '<div class="ick-value">' + show(t.cur) + '</div>' +
       '<div class="ick-prev">' + prevTxt + '</div>' +
-      bars(barCur, barPri) +
+      mid +
       '<div class="ick-foot"><span class="ick-sub">' + (t.sub || '') + '</span>' +
       chipFor(t.cur || 0, t.pri, t.chipKind) + '</div></div>';
   }
@@ -174,6 +209,7 @@
 
   function build(d) {
     var c = d.cur || {}, p = d.pri || {};
+    var sr = d.s || {};
     var mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var parts = String(d.asof || '').split('-');
     var asofNice = parts.length === 3
@@ -187,28 +223,28 @@
     var l2aC = ratio(c.faW, c.leadsW), l2aP = ratio(p.faW, p.leadsW);
 
     var year = section('This year', 'Jan 1 – ' + asofNice + ' · vs same period last year', [
-      { hero: 1, label: 'Sold revenue', fmt: 'money', cur: c.revY, pri: p.revY, titleAttr: moneyFull(c.revY || 0) },
-      { label: 'Jobs sold', fmt: 'count', cur: c.jobsY, pri: p.jobsY },
+      { hero: 1, label: 'Sold revenue', fmt: 'money', cur: c.revY, pri: p.revY, titleAttr: moneyFull(c.revY || 0), icon: 'dollar', series: sr.rev12 },
+      { label: 'Jobs sold', fmt: 'count', cur: c.jobsY, pri: p.jobsY, icon: 'tag', series: sr.jobs12 },
       { label: 'Appointments (first)', fmt: 'count', cur: c.faY, pri: p.faY,
-        sub: c.faY > (p.faY || 0) * 5 && (p.faY || 0) < 30 ? 'first-appt flag adopted mid-2025' : '' },
-      { label: 'New leads', fmt: 'count', cur: c.leadsY, pri: p.leadsY }
+        sub: c.faY > (p.faY || 0) * 5 && (p.faY || 0) < 30 ? 'first-appt flag adopted mid-2025' : '', icon: 'cal', series: sr.fa12 },
+      { label: 'New leads', fmt: 'count', cur: c.leadsY, pri: p.leadsY, icon: 'userplus', series: sr.leads12 }
     ]);
     var month = section('This month', 'Day ' + d.dom + ' of ' + d.dim + ' · vs prior month, day-matched', [
-      { label: 'Revenue', fmt: 'money', cur: c.revM, pri: p.revM, titleAttr: moneyFull(c.revM || 0) },
-      { label: 'Jobs sold', fmt: 'count', cur: c.jobsM, pri: p.jobsM },
-      { label: 'Sales designers', fmt: 'count', cur: c.desM, pri: p.desM, sub: 'active this month' },
-      { label: 'Company closing %', fmt: 'pct', cur: closeC, pri: closeP, chipKind: 'pp',
+      { label: 'Revenue', fmt: 'money', cur: c.revM, pri: p.revM, titleAttr: moneyFull(c.revM || 0), icon: 'dollar', series: sr.revw12 },
+      { label: 'Jobs sold', fmt: 'count', cur: c.jobsM, pri: p.jobsM, icon: 'tag', series: sr.jobsw12 },
+      { label: 'Sales designers', fmt: 'count', cur: c.desM, pri: p.desM, sub: 'active this month', icon: 'users' },
+      { label: 'Company closing %', fmt: 'pct', cur: closeC, pri: closeP, chipKind: 'pp', icon: 'pct',
         sub: num(c.soldM || 0) + ' sold ÷ ' + num(c.cedM || 0) + ' created' },
-      { label: 'Average sale', fmt: 'money', cur: avgC, pri: avgP,
+      { label: 'Average sale', fmt: 'money', cur: avgC, pri: avgP, icon: 'receipt',
         titleAttr: avgC == null ? '' : moneyFull(avgC) }
     ]);
     var week = section('This week', 'Sunday start · day ' + d.wde + ' of 7 · vs prior week, day-matched', [
-      { label: 'Revenue', fmt: 'money', cur: c.revW, pri: p.revW, titleAttr: moneyFull(c.revW || 0) },
-      { label: 'Jobs sold', fmt: 'count', cur: c.jobsW, pri: p.jobsW },
-      { label: 'Appointments (first)', fmt: 'count', cur: c.faW, pri: p.faW },
-      { label: 'Appts per designer', fmt: 'dec', cur: apdC, pri: apdP,
+      { label: 'Revenue', fmt: 'money', cur: c.revW, pri: p.revW, titleAttr: moneyFull(c.revW || 0), icon: 'dollar', series: sr.revw12 },
+      { label: 'Jobs sold', fmt: 'count', cur: c.jobsW, pri: p.jobsW, icon: 'tag', series: sr.jobsw12 },
+      { label: 'Appointments (first)', fmt: 'count', cur: c.faW, pri: p.faW, icon: 'cal', series: sr.faw12 },
+      { label: 'Appts per designer', fmt: 'dec', cur: apdC, pri: apdP, icon: 'users',
         sub: num(c.faW || 0) + ' first appts ÷ ' + num(c.desM || 0) + ' designers' },
-      { label: 'Lead → appt conversion', fmt: 'pct', cur: l2aC, pri: l2aP, chipKind: 'pp',
+      { label: 'Lead → appt conversion', fmt: 'pct', cur: l2aC, pri: l2aP, chipKind: 'pp', icon: 'pct',
         sub: num(c.faW || 0) + ' of ' + num(c.leadsW || 0) + ' leads · partial week' }
     ]);
 
@@ -245,6 +281,6 @@
     });
   }
 
-  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.0.1' };
+  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.1.0' };
   render();
 })();
