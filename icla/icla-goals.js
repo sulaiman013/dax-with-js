@@ -2,7 +2,7 @@
  * Inspired Closets LA - "2026 Goals" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.0/icla/icla-goals.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.1/icla/icla-goals.js
  * License : MIT
  *
  * Fourteen goal-vs-actual KPI tiles (Marye Silvers' 2026 goal framework),
@@ -57,42 +57,42 @@
   var CSS = [
     '#icg-root{background:', T.ground, ';color:', T.ink,
       ";font-family:'Segoe UI',system-ui,-apple-system,sans-serif;",
-      'padding:18px 20px 14px;min-height:100%;box-sizing:border-box}',
+      'padding:24px 24px 18px;min-height:100%;box-sizing:border-box}',
     '#icg-root *{box-sizing:border-box;margin:0;padding:0}',
     '.icg-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;',
-      'flex-wrap:wrap;border-bottom:3px solid ', T.good, ';padding-bottom:10px;margin-bottom:14px}',
+      'flex-wrap:wrap;border-bottom:3px solid ', T.good, ';padding-bottom:14px;margin-bottom:20px}',
     '.icg-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:', T.good, ';margin-bottom:2px}',
-    '.icg-title{font-size:22px;font-weight:700;letter-spacing:-.01em}',
+    '.icg-title{font-size:24px;font-weight:700;letter-spacing:-.01em}',
     '.icg-title span{color:', T.faint, ';font-weight:400}',
     '.icg-asof{text-align:right;color:', T.sec, ';font-size:11.5px;line-height:1.5}',
     '.icg-asof b{color:', T.ink, ';font-weight:600}',
-    '.icg-sec{margin-bottom:14px}',
-    '.icg-sechead{display:flex;align-items:center;gap:9px;margin-bottom:8px}',
+    '.icg-sec{margin-bottom:20px}',
+    '.icg-sechead{display:flex;align-items:center;gap:9px;margin-bottom:10px}',
     '.icg-tag{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:', T.good, '}',
     '.icg-win{font-size:11px;color:', T.faint, '}',
     '.icg-rule{flex:1;height:1px;background:', T.line, '}',
-    '.icg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}',
-    '.icg-tile{background:', T.card, ';border:1px solid ', T.line, ';border-radius:8px;',
-      'padding:11px 13px 12px;display:flex;flex-direction:column;gap:5px;min-width:0}',
+    '.icg-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}',
+    '.icg-tile{background:', T.card, ';border:1px solid ', T.line, ';border-radius:10px;',
+      'padding:15px 17px 15px;display:flex;flex-direction:column;gap:7px;min-width:0}',
     '.icg-hero{grid-column:span 2}',
     '.icg-label{font-size:11px;font-weight:600;color:', T.sec, '}',
-    '.icg-value{font-size:22px;font-weight:600;line-height:1.05;letter-spacing:-.01em;',
+    '.icg-value{font-size:25px;font-weight:600;line-height:1.05;letter-spacing:-.01em;',
       "font-family:'DIN','Segoe UI',system-ui,sans-serif}",
-    '.icg-hero .icg-value{font-size:40px;font-weight:700}',
+    '.icg-hero .icg-value{font-size:46px;font-weight:700}',
     '.icg-value small{font-size:.55em;color:', T.faint, ';font-weight:500}',
     '.icg-goal{font-size:11px;color:', T.sec, '}',
     '.icg-goal b{color:', T.ink, ';font-weight:600}',
-    '.icg-meter{position:relative;height:7px;border-radius:4px;margin-top:2px}',
+    '.icg-meter{position:relative;height:8px;border-radius:4px;margin-top:4px}',
     '.icg-fill{position:absolute;top:0;bottom:0;left:0;border-radius:4px;min-width:2px}',
     '.icg-tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:', T.ink, ';opacity:.5;border-radius:1px}',
-    '.icg-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:1px;min-height:20px}',
+    '.icg-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:1px;min-height:22px}',
     '.icg-sub{font-size:10.5px;color:', T.faint, ';font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.icg-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;',
       'padding:2px 8px;border-radius:999px;white-space:nowrap;flex:none}',
-    '.icg-pips{display:flex;gap:6px;padding:7px 0 2px}',
-    '.icg-pip{width:15px;height:15px;border-radius:50%;border:1.5px solid ', T.line, '}',
-    '.icg-notes{margin-top:2px;padding:9px 13px;background:', T.card, ';border:1px solid ', T.line,
-      ';border-radius:8px;font-size:10.5px;color:', T.sec, ';line-height:1.6}',
+    '.icg-pips{display:flex;gap:8px;padding:9px 0 4px}',
+    '.icg-pip{width:17px;height:17px;border-radius:50%;border:1.5px solid ', T.line, '}',
+    '.icg-notes{margin-top:4px;padding:12px 16px;background:', T.card, ';border:1px solid ', T.line,
+      ';border-radius:8px;font-size:11px;color:', T.sec, ';line-height:1.65}',
     '.icg-notes b{color:', T.ink, '}',
     '@media(max-width:900px){.icg-grid{grid-template-columns:repeat(2,1fr)}}'
   ].join('');
@@ -268,6 +268,6 @@
     });
   }
 
-  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.0' };
+  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.1' };
   render();
 })();
