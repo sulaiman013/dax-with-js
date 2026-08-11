@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>ICLA Goals - local harness</title>
+<style>body{margin:0;background:#ddd}#stage{width:1500px;margin:0 auto;background:#fff}</style>
+</head>
+<body>
+<div id="stage">
+  <!-- exactly what the DAX measure emits -->
+  <div id="icg-root"></div>
+  <script>
+    /* fixture payload = real icall_gold ICLA values, 2026-08-11 */
+    window.__iclaGoals = {
+      asof: '2026-08-11', doy: 223, diy: 365, dom: 11, dim: 31, wde: 3,
+      revY: 347439142, revM: 677692, revW: 0,
+      jobsY: 328, jobsM: 3, jobsW: 0,
+      faY: 497, faM: 14, faW: 3,
+      leadsY: 1378, leadsW: 45,
+      desM: 5, soldM: 3, decM: 3,
+      g: { revY: 700000000, revM: 58333300, revW: 13461500,
+           jobsY: 623, jobsM: 52, jobsW: 12,
+           faY: 1113, faW: 22, leadsY: 3479,
+           des: 6, closeBp: 5600, avgC: 1122900, apdW: 4, l2aBp: 3200 }
+    };
+    if (window.ICGOALS && window.ICGOALS.render) { window.ICGOALS.render(); }
+  </script>
+  <script src="icla-goals.js"></script>
+</div>
+<script>
+  /* simulate the HTML Content visual's re-injection on cross-filter */
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var s1 = document.createElement('script');
+      s1.textContent = "if(window.ICGOALS&&window.ICGOALS.render){window.ICGOALS.render();}";
+      document.body.appendChild(s1);
+      var s2 = document.createElement('script');
+      s2.src = 'icla-goals.js';
+      document.body.appendChild(s2);
+      setTimeout(function () {
+        var roots = document.querySelectorAll('#icg-root').length;
+        var styles = document.querySelectorAll('#icg-style').length;
+        var tiles = document.querySelectorAll('.icg-tile').length;
+        console.log('IDEMPOTENCY roots=' + roots + ' styles=' + styles + ' tiles=' + tiles +
+          (styles === 1 && tiles === 14 ? ' PASS' : ' FAIL'));
+        document.title = 'IDEMPOTENCY ' + (styles === 1 && tiles === 14 ? 'PASS' : 'FAIL');
+      }, 300);
+    }, 400);
+  });
+</script>
+</body>
+</html>

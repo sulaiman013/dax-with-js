@@ -1,0 +1,187 @@
+// ============================================================================
+// Goals Page HTML  (Inspired Closets LA - "2026 Goals" page)
+// ----------------------------------------------------------------------------
+// Feeds icla/icla-goals.js via the HTML Content visual (STANDARD edition).
+// DAX ships DATA ONLY: integers, locale-safe via FORMAT(x, "0").
+//   money  -> INTEGER CENTS
+//   ratios -> INTEGER BASIS POINTS (5600 = 56.00%)
+//   counts -> plain integers
+// The JS derives closing %, average sale, appts/designer, lead->appt, every
+// pace ratio, every formatted string, every colour.
+//
+// ICLA basis: opportunity Created Date (NOT sold date - ICLA is the one
+// created-basis franchise). Week starts Sunday, matching the model's
+// "Start of Week" convention. Goals (Marye Silvers, Aug 2026) live in the
+// VAR block below - one place to edit when the plan changes.
+// ============================================================================
+
+Goals Page HTML =
+VAR CdnUrl =
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.0/icla/icla-goals.js"
+
+// -- calendar ---------------------------------------------------------------
+VAR _today = TODAY ()
+VAR _tomorrow = _today + 1
+VAR _y0 = DATE ( YEAR ( _today ), 1, 1 )
+VAR _m0 = DATE ( YEAR ( _today ), MONTH ( _today ), 1 )
+VAR _w0 = _today - WEEKDAY ( _today, 1 ) + 1        // Sunday of current week
+VAR _doy = INT ( _today - _y0 ) + 1
+VAR _diy = INT ( DATE ( YEAR ( _today ), 12, 31 ) - _y0 ) + 1
+VAR _dom = DAY ( _today )
+VAR _dim = DAY ( EOMONTH ( _today, 0 ) )
+VAR _wde = INT ( _today - _w0 ) + 1
+
+// -- goals (2026 plan, one edit point) ----------------------------------------
+VAR gRevYc = 700000000      // $7,000,000 in cents
+VAR gRevMc = 58333300       // $583,333
+VAR gRevWc = 13461500       // $134,615
+VAR gJobsY = 623
+VAR gJobsM = 52
+VAR gJobsW = 12
+VAR gFaY = 1113
+VAR gFaW = 22
+VAR gLeadsY = 3479
+VAR gDes = 6
+VAR gCloseBp = 5600         // >= 56%
+VAR gAvgC = 1122900         // >= $11,229
+VAR gApdW = 4               // >= 4 appts / designer / week
+VAR gL2aBp = 3200           // >= 32%
+
+// -- actuals (created-date basis; defensive against stray date filters) ------
+VAR _revY =
+    CALCULATE (
+        SUM ( Salesforce_Data[Amount] ),
+        Salesforce_Data[Revised Stage] = "Sold",
+        Salesforce_Data[Created Date] >= _y0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _revM =
+    CALCULATE (
+        SUM ( Salesforce_Data[Amount] ),
+        Salesforce_Data[Revised Stage] = "Sold",
+        Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _revW =
+    CALCULATE (
+        SUM ( Salesforce_Data[Amount] ),
+        Salesforce_Data[Revised Stage] = "Sold",
+        Salesforce_Data[Created Date] >= _w0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _jobsY =
+    CALCULATE (
+        COUNTROWS ( Salesforce_Data ),
+        Salesforce_Data[Revised Stage] = "Sold",
+        Salesforce_Data[Created Date] >= _y0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _jobsM =
+    CALCULATE (
+        COUNTROWS ( Salesforce_Data ),
+        Salesforce_Data[Revised Stage] = "Sold",
+        Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _jobsW =
+    CALCULATE (
+        COUNTROWS ( Salesforce_Data ),
+        Salesforce_Data[Revised Stage] = "Sold",
+        Salesforce_Data[Created Date] >= _w0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _faY =
+    CALCULATE (
+        COUNTROWS ( Appointments ),
+        Appointments[Is First Appointment] = 1,
+        Appointments[Activity Date and Time] >= _y0 && Appointments[Activity Date and Time] < _tomorrow,
+        REMOVEFILTERS ( DateTable )
+    )
+VAR _faM =
+    CALCULATE (
+        COUNTROWS ( Appointments ),
+        Appointments[Is First Appointment] = 1,
+        Appointments[Activity Date and Time] >= _m0 && Appointments[Activity Date and Time] < _tomorrow,
+        REMOVEFILTERS ( DateTable )
+    )
+VAR _faW =
+    CALCULATE (
+        COUNTROWS ( Appointments ),
+        Appointments[Is First Appointment] = 1,
+        Appointments[Activity Date and Time] >= _w0 && Appointments[Activity Date and Time] < _tomorrow,
+        REMOVEFILTERS ( DateTable )
+    )
+VAR _leadsY =
+    CALCULATE (
+        COUNTROWS ( Leads ),
+        Leads[Lead Created Date] >= _y0 && Leads[Lead Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable )
+    )
+VAR _leadsW =
+    CALCULATE (
+        COUNTROWS ( Leads ),
+        Leads[Lead Created Date] >= _w0 && Leads[Lead Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable )
+    )
+VAR _desM =
+    CALCULATE (
+        DISTINCTCOUNT ( Salesforce_Data[Designer] ),
+        NOT ISBLANK ( Salesforce_Data[Designer] ),
+        Salesforce_Data[Designer] <> "",
+        Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+VAR _soldM = _jobsM
+VAR _decM =
+    CALCULATE (
+        COUNTROWS ( Salesforce_Data ),
+        Salesforce_Data[Revised Stage] IN { "Sold", "Lost", "Dead Lead" },
+        Salesforce_Data[Created Date] >= _m0 && Salesforce_Data[Created Date] < _tomorrow,
+        REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable )
+    )
+
+// -- serialize (integers only; FORMAT "0" emits no separator in any locale) --
+VAR _n = ","
+VAR Payload =
+    "window.__iclaGoals={asof:'" & FORMAT ( _today, "YYYY-MM-DD" ) & "'"
+        & _n & "doy:"    & FORMAT ( _doy, "0" )
+        & _n & "diy:"    & FORMAT ( _diy, "0" )
+        & _n & "dom:"    & FORMAT ( _dom, "0" )
+        & _n & "dim:"    & FORMAT ( _dim, "0" )
+        & _n & "wde:"    & FORMAT ( _wde, "0" )
+        & _n & "revY:"   & FORMAT ( ROUND ( COALESCE ( _revY, 0 ) * 100, 0 ), "0" )
+        & _n & "revM:"   & FORMAT ( ROUND ( COALESCE ( _revM, 0 ) * 100, 0 ), "0" )
+        & _n & "revW:"   & FORMAT ( ROUND ( COALESCE ( _revW, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsY:"  & FORMAT ( COALESCE ( _jobsY, 0 ), "0" )
+        & _n & "jobsM:"  & FORMAT ( COALESCE ( _jobsM, 0 ), "0" )
+        & _n & "jobsW:"  & FORMAT ( COALESCE ( _jobsW, 0 ), "0" )
+        & _n & "faY:"    & FORMAT ( COALESCE ( _faY, 0 ), "0" )
+        & _n & "faM:"    & FORMAT ( COALESCE ( _faM, 0 ), "0" )
+        & _n & "faW:"    & FORMAT ( COALESCE ( _faW, 0 ), "0" )
+        & _n & "leadsY:" & FORMAT ( COALESCE ( _leadsY, 0 ), "0" )
+        & _n & "leadsW:" & FORMAT ( COALESCE ( _leadsW, 0 ), "0" )
+        & _n & "desM:"   & FORMAT ( COALESCE ( _desM, 0 ), "0" )
+        & _n & "soldM:"  & FORMAT ( COALESCE ( _soldM, 0 ), "0" )
+        & _n & "decM:"   & FORMAT ( COALESCE ( _decM, 0 ), "0" )
+        & _n & "g:{revY:" & FORMAT ( gRevYc, "0" )
+            & _n & "revM:"   & FORMAT ( gRevMc, "0" )
+            & _n & "revW:"   & FORMAT ( gRevWc, "0" )
+            & _n & "jobsY:"  & FORMAT ( gJobsY, "0" )
+            & _n & "jobsM:"  & FORMAT ( gJobsM, "0" )
+            & _n & "jobsW:"  & FORMAT ( gJobsW, "0" )
+            & _n & "faY:"    & FORMAT ( gFaY, "0" )
+            & _n & "faW:"    & FORMAT ( gFaW, "0" )
+            & _n & "leadsY:" & FORMAT ( gLeadsY, "0" )
+            & _n & "des:"    & FORMAT ( gDes, "0" )
+            & _n & "closeBp:" & FORMAT ( gCloseBp, "0" )
+            & _n & "avgC:"   & FORMAT ( gAvgC, "0" )
+            & _n & "apdW:"   & FORMAT ( gApdW, "0" )
+            & _n & "l2aBp:"  & FORMAT ( gL2aBp, "0" )
+        & "}};"
+
+RETURN
+    "<div id='icg-root'></div>"
+        & "<script>" & Payload
+        & "if(window.ICGOALS&&window.ICGOALS.render){window.ICGOALS.render();}"
+        & "</script>"
+        & "<script src='" & CdnUrl & "'></script>"
