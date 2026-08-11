@@ -1,0 +1,104 @@
+// ============================================================================
+// KPI Page HTML  (Inspired Closets Chicago - "KPI Overview" page)
+// ----------------------------------------------------------------------------
+// Feeds icch/icch-kpi.js via the HTML Content visual (STANDARD edition).
+// DATA ONLY: integers, locale-safe FORMAT(x,"0"). Money = CENTS.
+// NO goals: every tile compares current vs the DAY-MATCHED prior period.
+// Basis: Original Project Sold Date for sold $/jobs (Salesforce Community
+// standard); closing % = sold-in-period / created-in-period excl Dead Lead;
+// leads/appointments by their own dates. Week starts Sunday.
+// ============================================================================
+
+KPI Page HTML =
+VAR CdnUrl =
+    "https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.0.0/icch/icch-kpi.js"
+
+// calendar
+VAR _today = TODAY ()
+VAR _tomorrow = _today + 1
+VAR _y0  = DATE ( YEAR ( _today ), 1, 1 )
+VAR _m0  = DATE ( YEAR ( _today ), MONTH ( _today ), 1 )
+VAR _w0  = _today - WEEKDAY ( _today, 1 ) + 1
+VAR _doy = INT ( _today - _y0 ) + 1
+VAR _diy = INT ( DATE ( YEAR ( _today ), 12, 31 ) - _y0 ) + 1
+VAR _dom = DAY ( _today )
+VAR _dim = DAY ( EOMONTH ( _today, 0 ) )
+VAR _wde = INT ( _today - _w0 ) + 1
+// day-matched prior windows
+VAR _pY0 = DATE ( YEAR ( _today ) - 1, 1, 1 )
+VAR _pYe = DATE ( YEAR ( _today ) - 1, MONTH ( _today ), DAY ( _today ) ) + 1
+VAR _pM0 = EOMONTH ( _today, -2 ) + 1
+VAR _pMe = _pM0 + _dom
+VAR _pW0 = _w0 - 7
+VAR _pWe = _pW0 + _wde
+
+// sold-date windows (Community basis)
+VAR _revY  = CALCULATE ( SUM ( Salesforce_Data[Amount] ), Salesforce_Data[Original Project Sold Date] >= _y0  && Salesforce_Data[Original Project Sold Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _revM  = CALCULATE ( SUM ( Salesforce_Data[Amount] ), Salesforce_Data[Original Project Sold Date] >= _m0  && Salesforce_Data[Original Project Sold Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _revW  = CALCULATE ( SUM ( Salesforce_Data[Amount] ), Salesforce_Data[Original Project Sold Date] >= _w0  && Salesforce_Data[Original Project Sold Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pRevY = CALCULATE ( SUM ( Salesforce_Data[Amount] ), Salesforce_Data[Original Project Sold Date] >= _pY0 && Salesforce_Data[Original Project Sold Date] < _pYe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pRevM = CALCULATE ( SUM ( Salesforce_Data[Amount] ), Salesforce_Data[Original Project Sold Date] >= _pM0 && Salesforce_Data[Original Project Sold Date] < _pMe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pRevW = CALCULATE ( SUM ( Salesforce_Data[Amount] ), Salesforce_Data[Original Project Sold Date] >= _pW0 && Salesforce_Data[Original Project Sold Date] < _pWe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _jobsY  = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Original Project Sold Date] >= _y0  && Salesforce_Data[Original Project Sold Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _jobsM  = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Original Project Sold Date] >= _m0  && Salesforce_Data[Original Project Sold Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _jobsW  = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Original Project Sold Date] >= _w0  && Salesforce_Data[Original Project Sold Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pJobsY = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Original Project Sold Date] >= _pY0 && Salesforce_Data[Original Project Sold Date] < _pYe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pJobsM = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Original Project Sold Date] >= _pM0 && Salesforce_Data[Original Project Sold Date] < _pMe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pJobsW = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Original Project Sold Date] >= _pW0 && Salesforce_Data[Original Project Sold Date] < _pWe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+// first appointments / leads / designers / closing denominator
+VAR _faY   = CALCULATE ( COUNTROWS ( Appointments ), Appointments[Is First Appointment] = 1, Appointments[Activity Date and Time] >= _y0  && Appointments[Activity Date and Time] < _tomorrow, REMOVEFILTERS ( DateTable ) )
+VAR _faW   = CALCULATE ( COUNTROWS ( Appointments ), Appointments[Is First Appointment] = 1, Appointments[Activity Date and Time] >= _w0  && Appointments[Activity Date and Time] < _tomorrow, REMOVEFILTERS ( DateTable ) )
+VAR _pFaY  = CALCULATE ( COUNTROWS ( Appointments ), Appointments[Is First Appointment] = 1, Appointments[Activity Date and Time] >= _pY0 && Appointments[Activity Date and Time] < _pYe, REMOVEFILTERS ( DateTable ) )
+VAR _pFaW  = CALCULATE ( COUNTROWS ( Appointments ), Appointments[Is First Appointment] = 1, Appointments[Activity Date and Time] >= _pW0 && Appointments[Activity Date and Time] < _pWe, REMOVEFILTERS ( DateTable ) )
+VAR _leadsY  = CALCULATE ( COUNTROWS ( Leads ), Leads[Lead Created Date] >= _y0  && Leads[Lead Created Date] < _tomorrow, REMOVEFILTERS ( DateTable ) )
+VAR _leadsW  = CALCULATE ( COUNTROWS ( Leads ), Leads[Lead Created Date] >= _w0  && Leads[Lead Created Date] < _tomorrow, REMOVEFILTERS ( DateTable ) )
+VAR _pLeadsY = CALCULATE ( COUNTROWS ( Leads ), Leads[Lead Created Date] >= _pY0 && Leads[Lead Created Date] < _pYe, REMOVEFILTERS ( DateTable ) )
+VAR _pLeadsW = CALCULATE ( COUNTROWS ( Leads ), Leads[Lead Created Date] >= _pW0 && Leads[Lead Created Date] < _pWe, REMOVEFILTERS ( DateTable ) )
+VAR _desM  = CALCULATE ( DISTINCTCOUNT ( Salesforce_Data[Designer] ), NOT ISBLANK ( Salesforce_Data[Designer] ), Salesforce_Data[Designer] <> "", Salesforce_Data[Created Date] >= _m0  && Salesforce_Data[Created Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pDesM = CALCULATE ( DISTINCTCOUNT ( Salesforce_Data[Designer] ), NOT ISBLANK ( Salesforce_Data[Designer] ), Salesforce_Data[Designer] <> "", Salesforce_Data[Created Date] >= _pM0 && Salesforce_Data[Created Date] < _pMe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _cedM  = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Revised Stage] <> "Dead Lead", Salesforce_Data[Created Date] >= _m0  && Salesforce_Data[Created Date] < _tomorrow, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+VAR _pCedM = CALCULATE ( COUNTROWS ( Salesforce_Data ), Salesforce_Data[Revised Stage] <> "Dead Lead", Salesforce_Data[Created Date] >= _pM0 && Salesforce_Data[Created Date] < _pMe, REMOVEFILTERS ( DateTable ), REMOVEFILTERS ( SoldDateTable ) )
+
+// serialize
+VAR _n = ","
+VAR _c = "cur:{revY:" & FORMAT ( ROUND ( COALESCE ( _revY, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsY:"  & FORMAT ( COALESCE ( _jobsY, 0 ), "0" )
+        & _n & "faY:"    & FORMAT ( COALESCE ( _faY, 0 ), "0" )
+        & _n & "leadsY:" & FORMAT ( COALESCE ( _leadsY, 0 ), "0" )
+        & _n & "revM:"   & FORMAT ( ROUND ( COALESCE ( _revM, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsM:"  & FORMAT ( COALESCE ( _jobsM, 0 ), "0" )
+        & _n & "desM:"   & FORMAT ( COALESCE ( _desM, 0 ), "0" )
+        & _n & "soldM:"  & FORMAT ( COALESCE ( _jobsM, 0 ), "0" )
+        & _n & "cedM:"   & FORMAT ( COALESCE ( _cedM, 0 ), "0" )
+        & _n & "revW:"   & FORMAT ( ROUND ( COALESCE ( _revW, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsW:"  & FORMAT ( COALESCE ( _jobsW, 0 ), "0" )
+        & _n & "faW:"    & FORMAT ( COALESCE ( _faW, 0 ), "0" )
+        & _n & "leadsW:" & FORMAT ( COALESCE ( _leadsW, 0 ), "0" )
+        & "}"
+VAR _p = "pri:{revY:" & FORMAT ( ROUND ( COALESCE ( _pRevY, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsY:"  & FORMAT ( COALESCE ( _pJobsY, 0 ), "0" )
+        & _n & "faY:"    & FORMAT ( COALESCE ( _pFaY, 0 ), "0" )
+        & _n & "leadsY:" & FORMAT ( COALESCE ( _pLeadsY, 0 ), "0" )
+        & _n & "revM:"   & FORMAT ( ROUND ( COALESCE ( _pRevM, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsM:"  & FORMAT ( COALESCE ( _pJobsM, 0 ), "0" )
+        & _n & "desM:"   & FORMAT ( COALESCE ( _pDesM, 0 ), "0" )
+        & _n & "soldM:"  & FORMAT ( COALESCE ( _pJobsM, 0 ), "0" )
+        & _n & "cedM:"   & FORMAT ( COALESCE ( _pCedM, 0 ), "0" )
+        & _n & "revW:"   & FORMAT ( ROUND ( COALESCE ( _pRevW, 0 ) * 100, 0 ), "0" )
+        & _n & "jobsW:"  & FORMAT ( COALESCE ( _pJobsW, 0 ), "0" )
+        & _n & "faW:"    & FORMAT ( COALESCE ( _pFaW, 0 ), "0" )
+        & _n & "leadsW:" & FORMAT ( COALESCE ( _pLeadsW, 0 ), "0" )
+        & "}"
+VAR Payload =
+    "window.__icchKpi={asof:'" & FORMAT ( _today, "YYYY-MM-DD" ) & "'"
+        & _n & "doy:" & FORMAT ( _doy, "0" ) & _n & "diy:" & FORMAT ( _diy, "0" )
+        & _n & "dom:" & FORMAT ( _dom, "0" ) & _n & "dim:" & FORMAT ( _dim, "0" )
+        & _n & "wde:" & FORMAT ( _wde, "0" )
+        & _n & _c & _n & _p & "};"
+
+RETURN
+    "<div id='ick-root'></div>"
+        & "<script>" & Payload
+        & "if(window.ICCHKPI&&window.ICCHKPI.render){window.ICCHKPI.render();}"
+        & "</script>"
+        & "<script src='" & CdnUrl & "'></script>"

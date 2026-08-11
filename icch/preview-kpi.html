@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>ICCH KPI - harness</title>
+<style>html,body{height:100%;margin:0;background:#ddd}</style>
+</head>
+<body>
+  <div id="ick-root"></div>
+  <script>
+    /* fixture = live-SF-validated ICCH values, 2026-08-11 (cents/counts) */
+    window.__icchKpi = {
+      asof: '2026-08-11', doy: 223, diy: 365, dom: 11, dim: 31, wde: 3,
+      cur: { revY: 508902426, jobsY: 588, faY: 874, leadsY: 1753,
+             revM: 14142996, jobsM: 23, desM: 9, soldM: 23, cedM: 46,
+             revW: 2456628, jobsW: 3, faW: 11, leadsW: 24 },
+      pri: { revY: 578786233, jobsY: 648, faY: 29, leadsY: 2249,
+             revM: 33576355, jobsM: 34, desM: 11, soldM: 34, cedM: 49,
+             revW: 7887389, jobsW: 13, faW: 19, leadsW: 23 }
+    };
+    if (window.ICCHKPI && window.ICCHKPI.render) { window.ICCHKPI.render(); }
+  </script>
+  <script src="icch-kpi.js"></script>
+<script>
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var s1 = document.createElement('script');
+      s1.textContent = "if(window.ICCHKPI&&window.ICCHKPI.render){window.ICCHKPI.render();}";
+      document.body.appendChild(s1);
+      var s2 = document.createElement('script'); s2.src = 'icch-kpi.js';
+      document.body.appendChild(s2);
+      setTimeout(function () {
+        var styles = document.querySelectorAll('#ick-style').length;
+        var tiles = document.querySelectorAll('.ick-tile').length;
+        document.title = 'IDEMPOTENCY ' + (styles === 1 && tiles === 14 ? 'PASS' : 'FAIL');
+      }, 300);
+    }, 400);
+  });
+</script>
+</body>
+</html>
