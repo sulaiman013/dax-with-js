@@ -2,7 +2,7 @@
  * Inspired Closets Chicago - "KPI Overview" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.0.0/icch/icch-kpi.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.0.1/icch/icch-kpi.js
  * License : MIT
  *
  * Fourteen KPI tiles, NO goal framework (ICCH has not set goals): each tile
@@ -54,7 +54,7 @@
     'html,body{height:100%;margin:0}',
     '#ick-root{background:', T.ground, ';color:', T.ink,
       ";font-family:'Segoe UI',system-ui,-apple-system,sans-serif;",
-      'padding:22px 24px 16px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}',
+      'padding:22px 24px 16px;height:100%;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}',
     '#ick-root *{box-sizing:border-box}',
     '.ick-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;',
       'flex-wrap:wrap;border-bottom:3px solid ', T.cur, ';padding-bottom:14px;margin-bottom:18px}',
@@ -245,6 +245,6 @@
     });
   }
 
-  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.0.0' };
+  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.0.1' };
   render();
 })();

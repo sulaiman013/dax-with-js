@@ -2,7 +2,7 @@
  * Inspired Closets LA - "2026 Goals" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.4/icla/icla-goals.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.5/icla/icla-goals.js
  * License : MIT
  *
  * Fourteen goal-vs-actual KPI tiles (Marye Silvers' 2026 goal framework),
@@ -60,7 +60,7 @@
     'html,body{height:100%;margin:0}',
     '#icg-root{background:', T.ground, ';color:', T.ink,
       ";font-family:'Segoe UI',system-ui,-apple-system,sans-serif;",
-      'padding:22px 24px 16px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}',
+      'padding:22px 24px 16px;height:100%;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}',
     '#icg-root *{box-sizing:border-box}',
     '.icg-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;',
       'flex-wrap:wrap;border-bottom:3px solid ', T.good, ';padding-bottom:14px;margin-bottom:20px}',
@@ -271,6 +271,6 @@
     });
   }
 
-  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.4' };
+  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.5' };
   render();
 })();
