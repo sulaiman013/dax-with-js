@@ -62,6 +62,22 @@ VAR FiredJs =
         ","
     )
 
+VAR BS = UNICHAR ( 92 )
+VAR RuleRows =
+    ADDCOLUMNS (
+        SUMMARIZE ( fact_alert, dim_risk_rule[rule_id], dim_risk_rule[rule_name],
+                    dim_risk_rule[weight] ),
+        "fires", [Rule Firings]
+    )
+VAR RulesJs =
+    CONCATENATEX (
+        RuleRows,
+        "['" & SUBSTITUTE ( dim_risk_rule[rule_name], "'", BS & "'" ) & "',"
+            & FORMAT ( COALESCE ( dim_risk_rule[weight], 0 ), "0" ) & ","
+            & FORMAT ( COALESCE ( [fires], 0 ), "0" ) & "]",
+        ",", dim_risk_rule[weight], DESC
+    )
+
 VAR TotTxns = CALCULATE ( [Transactions], ALLSELECTED () )
 VAR TotAmt = CALCULATE ( ROUND ( [Total Amount] * 100, 0 ), ALLSELECTED () )
 VAR TotAlerts = CALCULATE ( [Alerts Raised], ALLSELECTED () )
@@ -87,7 +103,8 @@ VAR UnknownDates =
     CALCULATE ( [Transactions], ALLSELECTED (), ISBLANK ( dim_date[yr] ) )
 
 VAR Payload =
-    "window.__fcData={page:'guide',currency:'RM',dim:{bands:['LOW','MEDIUM','HIGH']},"
+    "window.__fcData={page:'guide',currency:'RM',"
+        & "dim:{bands:['LOW','MEDIUM','HIGH'],rules:[" & RulesJs & "]},"
         & "hist:[" & HistJs & "],"
         & "fired:[" & FiredJs & "],"
         & "meta:{"

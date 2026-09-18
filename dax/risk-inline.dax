@@ -497,6 +497,36 @@ VAR Lib = "(function () {
     '.fco-note{font-size:11.5px;color:var(--ink2);line-height:1.5;margin-top:10px;',
     'padding-top:9px;border-top:1px solid var(--line);}',
     '.fco-note b{font-weight:660;color:var(--ink);}',
+    '.fco-gbody{display:flex;flex-direction:column;}',
+    '.fco-grow{flex:1 1 auto;min-height:0;}',
+    '.fco-cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}',
+    '.fco-cols2.fco-grow,.fco-cols3.fco-grow{align-items:start;}',
+    
+    '.fco-cols-demo{display:grid;grid-template-columns:1.45fr 1fr;gap:14px;}',
+    '.fco-cols-demo .fco-demo,.fco-cols-demo .fco-sec{display:flex;',
+    'flex-direction:column;}',
+    '.fco-cols-demo .fco-demo-hist{flex:1 1 auto;min-height:90px;height:auto;}',
+    '.fco-wt{display:flex;flex-direction:column;justify-content:space-evenly;',
+    'flex:1 1 auto;min-height:0;margin-top:4px;}',
+    '.fco-wtr{display:grid;grid-template-columns:96px 1fr 34px;align-items:center;',
+    'gap:9px;}',
+    '.fco-wtl{font-size:11.5px;color:var(--ink2);white-space:nowrap;',
+    'overflow:hidden;text-overflow:ellipsis;}',
+    '.fco-wtb{height:9px;background:var(--sunken);border-radius:5px;overflow:hidden;}',
+    '.fco-wtf{height:100%;background:var(--accent);border-radius:5px;}',
+    '.fco-wtv{font-size:11.5px;font-weight:660;text-align:right;}',
+    '.fco-ba{display:grid;grid-template-columns:200px 1fr 110px;align-items:center;',
+    'gap:11px;margin-bottom:9px;}',
+    '.fco-ba:last-of-type{margin-bottom:0;}',
+    '.fco-bal{font-size:11.5px;color:var(--ink2);white-space:nowrap;',
+    'overflow:hidden;text-overflow:ellipsis;}',
+    '.fco-bab{position:relative;height:13px;background:var(--sunken);',
+    'border-radius:7px;overflow:hidden;}',
+    '.fco-baf{position:absolute;left:0;top:0;height:100%;border-radius:7px;}',
+    '.fco-baf.raw{background:var(--line2);z-index:1;}',
+    '.fco-baf.gold{background:var(--accent);z-index:0;opacity:.35;}',
+    '.fco-bav{font-size:11px;color:var(--ink3);text-align:right;}',
+    '.fco-bav b{color:var(--ink);font-weight:660;}',
     /* empty + error ------------------------------------------------------ */
     '.fco-empty{flex:1 1 auto;display:flex;align-items:center;justify-content:center;',
     'font-size:12px;color:var(--ink3);text-align:center;padding:16px;}',
@@ -1016,6 +1046,9 @@ VAR Lib = "(function () {
       'reason the numbers on the other pages mean anything.</div></div></div>';
   }
 
+  /* Every section fills the canvas. The body is a flex column and the block
+   * carrying the most weight gets flex:1, so a short section stretches its
+   * substance rather than leaving 400px of empty page underneath it. */
   function gSection(id) {
     var m = D.meta || {};
     var h = '';
@@ -1024,9 +1057,9 @@ VAR Lib = "(function () {
       h += '<p class=""fco-lede"">This pack monitors <b>' + full(m.txns || 0) +
         '</b> card and account transactions for financial crime, across <b>' +
         esc(m.months || 0) + ' months</b> from ' + esc(m.minYr || '') + ' to ' +
-        esc(m.maxYr || '') + '. It exists to answer one operational question: ' +
-        'which transactions should a human look at today, and can the team ' +
-        'actually work that many.</p>';
+        esc(m.maxYr || '') + '. It answers one operational question: which ' +
+        'transactions should a human look at today, and can the team actually ' +
+        'work that many.</p>';
       h += '<div class=""fco-stats"">' +
         gstat(full(m.txns || 0), 'transactions') +
         gstat(full(m.customers || 0), 'customers') +
@@ -1035,18 +1068,49 @@ VAR Lib = "(function () {
         gstat(money(m.amt || 0), 'total value') +
         gstat(pct(m.txns ? (m.alerts || 0) / m.txns : 0), 'alert rate') +
         '</div>';
-      h += '<div class=""fco-sec""><h3>What makes this report unusual</h3>' +
-        '<p>Every page is a <b>single visual</b>. Not a canvas of twenty ' +
-        'visuals: one HTML visual filling the page, drawn by JavaScript from ' +
-        'data one DAX measure hands it.</p>' +
-        '<p>That sounds like a stunt and is not. A custom visual cannot ' +
-        'cross-filter its neighbours unless its own compiled code builds ' +
-        'selection identities, which this one does not. Rather than fight that, ' +
-        'the page <i>is</i> the visual, so there is nothing to cross-filter to. ' +
-        'Every click re-aggregates in the browser in under a millisecond and ' +
-        'never touches the model.</p>' +
-        '<p>Open <b>How the data gets here</b> next, or jump to ' +
-        '<b>Firing vs alert</b> for the one idea that matters most.</p></div>';
+      h += '<div class=""fco-cols3"">';
+      h += gcard('Every page is one visual',
+        '<p>Not a canvas of twenty visuals: <b>one</b> HTML visual filling the ' +
+        'page, drawn by JavaScript from data a single DAX measure hands it.</p>' +
+        '<p>A custom visual cannot cross-filter its neighbours unless its own ' +
+        'compiled code builds selection identities, which this one does not. ' +
+        'Rather than fight that, the page <i>is</i> the visual, so there is ' +
+        'nothing to cross-filter to.</p>' +
+        '<p>Every click re-aggregates in the browser in under a millisecond and ' +
+        'never touches the model.</p>');
+      h += gcard('What to read first',
+        '<div class=""fco-step""><div class=""fco-num"">1</div><div><b>Overview</b> ' +
+        'for alert volume and value over time.</div></div>' +
+        '<div class=""fco-step""><div class=""fco-num"">2</div><div>' +
+        '<b>Rule effectiveness</b> for what fires and what a threshold costs.' +
+        '</div></div>' +
+        '<div class=""fco-step""><div class=""fco-num"">3</div><div>' +
+        '<b>Risk and exposure</b> for where the risk concentrates.</div></div>' +
+        '<p style=""margin-top:9px"">Open <b>Firing vs alert</b> in this guide for ' +
+        'the one idea the whole pack rests on.</p>');
+      h += gcard('The shape of the answer',
+        '<p>Of ' + full(m.txns || 0) + ' transactions, <b>' +
+        full(m.txnsWithRule || 0) + '</b> have at least one rule fire. Only <b>' +
+        full(m.alerts || 0) + '</b> score high enough to become an alert.</p>' +
+        '<p>That gap is the entire design. A queue of ' +
+        Math.round((m.txnsWithRule || 0) / 50000 / 2.5) + ' analyst-loads is ' +
+        'ignored; a queue of ' + Math.round((m.alerts || 0) / 50000 / 2.5) +
+        ' is worked.</p>' +
+        '<p class=""fco-dim"">Scores run 0 to ' + esc(m.maxScore || 145) +
+        '. The HIGH band starts at ' + esc(m.threshold || 60) + '.</p>');
+      h += '</div>';
+      h += '<div class=""fco-pipe"" style=""margin-top:14px"">';
+      for (var ps = 0; ps < GSTAGES.length; ps++) {
+        h += '<div class=""fco-stage"" data-k=""gstage"" data-v=""' + ps + '"">' +
+          '<div class=""fco-stage-n"">' + (ps + 1) + '</div>' +
+          '<div class=""fco-stage-t"">' + esc(GSTAGES[ps][0]) + '</div>' +
+          '<div class=""fco-stage-s"">' + esc(GSTAGES[ps][1]) + '</div></div>';
+        if (ps < GSTAGES.length - 1) h += '<div class=""fco-arrow"">&rsaquo;</div>';
+      }
+      h += '</div>';
+      h += '<div class=""fco-note"" style=""border-top:0;padding-top:4px"">' +
+        'The pipeline, end to end. Open <b>How the data gets here</b> to read ' +
+        'what each stage does and why it is constrained the way it is.</div>';
       return h;
     }
 
@@ -1064,87 +1128,103 @@ VAR Lib = "(function () {
         if (i < GSTAGES.length - 1) h += '<div class=""fco-arrow"">&rsaquo;</div>';
       }
       h += '</div>';
-      var st = GSTAGES[S.gstage == null ? 0 : S.gstage];
-      h += '<div class=""fco-sec""><h3>' + esc(st[0]) + ' ' + DOT + ' ' +
-        esc(st[1]) + '</h3><p>' + st[2] + '</p></div>';
-      h += '<div class=""fco-sec""><h3>Why the measure ships a cube</h3>' +
+      var st = GSTAGES[cur];
+      h += '<div class=""fco-grow fco-cols2"">';
+      h += gcard(st[0] + ' ' + DOT + ' ' + st[1], '<p>' + st[2] + '</p>' +
+        '<p class=""fco-dim"">Stage ' + (cur + 1) + ' of ' + GSTAGES.length +
+        '. Select another above.</p>');
+      h += gcard('Why the measure ships a cube',
         '<p>A DAX measure holds roughly <b>2,100,000 characters</b>. Shipping ' +
         full(m.txns || 0) + ' rows at grain would need about <b>1.7 billion</b>, ' +
-        'roughly 800 times over.</p>' +
-        '<p>So each measure aggregates first and ships a small cube: the ' +
-        'Overview uses month x channel x risk band x transaction type, 2,508 ' +
-        'populated cells, about 4% of the ceiling. The browser re-aggregates ' +
-        'that cube on every click. The trade is explicit: you can slice on the ' +
-        'dimensions a page ships and no others.</p></div>';
+        'roughly 800 times over the limit.</p>' +
+        '<p>So each measure aggregates first and ships a small cube. The ' +
+        'Overview uses month x channel x risk band x transaction type: <b>2,508' +
+        '</b> populated cells, about <b>4%</b> of the ceiling, from a 49.4M row ' +
+        'fact table.</p>' +
+        '<p>The browser re-aggregates that cube on every click. The trade is ' +
+        'explicit: you can slice on the dimensions a page ships, and no others.' +
+        '</p>');
+      h += '</div>';
       return h;
     }
 
     if (id === 'alerts') {
-      h += '<p class=""fco-lede"">This is the one idea worth reading twice. A ' +
-        '<b>rule firing</b> contributes points to a transaction risk score. An ' +
+      h += '<p class=""fco-lede"">The one idea worth reading twice. A <b>rule ' +
+        'firing</b> contributes points to a transaction risk score. An ' +
         '<b>alert</b> is that score crossing a threshold. Treating the two as ' +
         'the same thing is the most common way a monitoring programme quietly ' +
         'stops working.</p>';
       h += gFiringVsAlert();
-      h += gThresholdDemo();
+      h += '<div class=""fco-grow fco-cols-demo"">' + gThresholdDemo() +
+        gScoreComposition() + '</div>';
       return h;
     }
 
     if (id === 'pages') {
       h += '<p class=""fco-lede"">Three analytics pages, each shipping its own ' +
         'cube at the grain its questions need.</p>';
-      h += '<div class=""fco-cols2"">';
-      h += '<div class=""fco-sec""><h3>Overview</h3>' +
+      h += '<div class=""fco-grow fco-cols2"">';
+      h += gcard('Overview',
         '<p>Alert volume and value over time, by channel, risk band and ' +
-        'transaction type. Chips filter all four dimensions at once, and ' +
-        'clicking a month bar filters to it. Start here.</p>' +
-        '<p class=""fco-dim"">Cube: month x channel x band x type</p></div>';
-      h += '<div class=""fco-sec""><h3>Rule effectiveness</h3>' +
+        'transaction type. Chips filter all four dimensions at once; clicking a ' +
+        'month bar filters to it, and shift-clicking selects a range.</p>' +
+        '<p class=""fco-dim"">Cube: month x channel x band x type ' + DOT +
+        ' 2,508 cells</p>');
+      h += gcard('Rule effectiveness',
         '<p>Which rules fire and how often, how many fire together on one ' +
         'transaction, the full score distribution, and a table pricing each ' +
         'cut-off in analyst headcount.</p>' +
-        '<p class=""fco-dim"">Cubes: rules, rules-fired x band, score histogram</p>' +
-        '</div>';
-      h += '<div class=""fco-sec""><h3>Risk and exposure</h3>' +
+        '<p class=""fco-dim"">Cubes: rules, rules-fired x band, score histogram</p>');
+      h += gcard('Risk and exposure',
         '<p>Where risk concentrates: merchant category, settlement currency, ' +
         'card brand and entry mode, each stacked by risk band, with ' +
         'card-not-present, cross-border and odd-hour headlines.</p>' +
-        '<p class=""fco-dim"">Cubes: four dimension x band grids</p></div>';
-      h += '</div>';
-      h += '<div class=""fco-sec""><h3>How filtering behaves</h3>' +
+        '<p class=""fco-dim"">Cubes: four dimension x band grids</p>');
+      h += gcard('How filtering behaves',
         '<p>The chips at the top of a page filter <b>inside the browser</b>. ' +
         'They are instant and never hit the model.</p>' +
-        '<p>Power BI report and page filters still apply, because the measure ' +
-        'is evaluated in filter context. What a page cannot do is filter ' +
-        '<b>out</b> to other visuals: an HTML visual receives filter context but ' +
-        'cannot emit it. Use the page tabs to move between pages.</p></div>';
+        '<p>Power BI report and page filters still apply, because the measure is ' +
+        'evaluated in filter context. What a page cannot do is filter <b>out</b> ' +
+        'to other visuals: an HTML visual receives filter context but cannot ' +
+        'emit it.</p>' +
+        '<p>Use the tabs at the top of the page to move between pages.</p>');
+      h += '</div>';
       return h;
     }
 
     if (id === 'numbers') {
       h += '<p class=""fco-lede"">Four conventions worth knowing before you quote ' +
         'anything off these pages.</p>';
-      h += '<div class=""fco-cols2"">';
-      h += '<div class=""fco-sec""><h3>Money crosses as integers</h3>' +
+      h += '<div class=""fco-grow fco-cols2"">';
+      h += gcard('Money crosses as integers',
         '<p>Amounts leave DAX as <b>integer sen</b> and are divided by 100 in ' +
-        'the browser. <code>FORMAT(x, ""0"")</code> emits no digit separator in ' +
-        'any locale, so a workspace that writes <code>1.234,56</code> cannot ' +
-        'silently corrupt the payload into invalid JavaScript.</p></div>';
-      h += '<div class=""fco-sec""><h3>Denominators differ on purpose</h3>' +
+        'the browser.</p>' +
+        '<p><code>FORMAT(x, ""0"")</code> emits no digit separator in any locale, ' +
+        'so a workspace that writes <code>1.234,56</code> cannot silently turn ' +
+        'the payload into invalid JavaScript. The same trick is why ratios ' +
+        'cross as basis points rather than decimals.</p>');
+      h += gcard('Denominators differ on purpose',
         '<p><b>Approval rate</b> and <b>decline rate</b> divide by the <b>' +
         full(m.decided || 0) + '</b> transactions that received an ' +
-        'authorisation decision, not by all ' + full(m.txns || 0) + '. The ' +
-        'other <b>' + full(m.undecided || 0) + '</b> never got one, and ' +
-        'including them understates approval by about seven points.</p></div>';
-      h += '<div class=""fco-sec""><h3>Counts are exact</h3>' +
+        'authorisation decision, not by all ' + full(m.txns || 0) + '.</p>' +
+        '<p>The other <b>' + full(m.undecided || 0) + '</b> never got one. ' +
+        'Including them understates approval by about seven points, and in DAX ' +
+        'it is an easy mistake to make: <code>BLANK() = FALSE()</code> is ' +
+        '<b>true</b>, so a naive decline test counts every undecided ' +
+        'transaction as a decline.</p>');
+      h += gcard('Counts are exact',
         '<p>Nothing here is sampled or estimated. Every figure reconciles to ' +
-        'the model measures to the cent, and the build refuses to ship if the ' +
-        'cube and the model disagree on a single cell.</p></div>';
-      h += '<div class=""fco-sec""><h3>Headcount is an assumption</h3>' +
+        'the model measures to the cent.</p>' +
+        '<p>The build refuses to ship if the cube and the model disagree on a ' +
+        'single cell: the payload is rebuilt independently in Python and ' +
+        'compared cell by cell against what the DAX produces.</p>');
+      h += gcard('Headcount is an assumption',
         '<p>Analyst counts assume <b>50,000 alerts cleared per analyst-year</b> ' +
-        'across ' + esc(m.months || 0) + ' months. That figure is a planning ' +
-        'rule of thumb, not a measurement. Change it and every headcount on ' +
-        'these pages moves proportionally.</p></div>';
+        'across ' + esc(m.months || 0) + ' months.</p>' +
+        '<p>That is a planning rule of thumb, not a measurement. Change it and ' +
+        'every headcount in this pack moves proportionally. It is stated ' +
+        'wherever it is used rather than buried, because a number nobody can ' +
+        'audit is a number nobody should act on.</p>');
       h += '</div>';
       return h;
     }
@@ -1153,58 +1233,120 @@ VAR Lib = "(function () {
       h += '<p class=""fco-lede"">The source is deliberately ungoverned, and the ' +
         'report shows what survived rather than hiding it. This is the part ' +
         'most demos quietly skip.</p>';
-      h += '<div class=""fco-cols2"">';
-      h += '<div class=""fco-sec""><h3>What the source looked like</h3>' +
-        '<p>100 columns, all text. Five competing date formats in one column, ' +
-        'sentinel dates like <code>9999-12-31</code>, money as ' +
-        '<code>1,234.50</code> and <code>(45.00)</code> and ' +
-        '<code>RM99.00</code>, null written eight different ways, and <b>' +
-        full(m.dupes || 0) + '</b> exact duplicate rows.</p></div>';
-      h += '<div class=""fco-sec""><h3>What cleaning recovered</h3>' +
-        '<p>Posting dates went from <b>47.5%</b> parseable to <b>93.0%</b>. ' +
-        'Country collapsed from 32 spellings to one code, KYC status from 11 ' +
-        'variants to 5, card brand from 44 to 5.</p></div>';
-      h += '<div class=""fco-sec""><h3>What did not survive</h3>' +
+      h += '<div class=""fco-grow fco-cols2"">';
+      h += gcard('What the source looked like',
+        '<p>100 columns, every one of them text. Five competing date formats in ' +
+        'a single column, sentinel dates like <code>9999-12-31</code>, money as ' +
+        '<code>1,234.50</code> and <code>(45.00)</code> and <code>RM99.00</code>, ' +
+        'null written eight different ways.</p>' +
+        '<p>Plus <b>' + full(m.dupes || 0) + '</b> exact duplicate rows, ' +
+        'resolvable only because mirroring added a surrogate key: no subset of ' +
+        'the 100 business columns is unique.</p>');
+      h += gcard('What cleaning recovered',
+        '<p>Posting dates went from <b>47.5%</b> parseable to <b>93.0%</b>.</p>' +
+        '<p>Country collapsed from <b>32</b> spellings to one code, KYC status ' +
+        'from <b>11</b> variants to <b>5</b>, card brand from <b>44</b> to ' +
+        '<b>5</b>. Seven risk rules were kept after measuring their fire rates; ' +
+        'two were dropped for firing on almost everything or almost nothing.</p>');
+      h += gcard('What did not survive',
         '<p><b>' + full(m.unknownDates || 0) + '</b> transactions have a date ' +
         'that never parsed. They sit in an <b>Unknown</b> bucket on the Overview ' +
-        'trend rather than being dropped. A monitoring page that silently loses ' +
-        'transactions is worse than one that admits to them.</p></div>';
-      h += '<div class=""fco-sec""><h3>Mess you can still see</h3>' +
+        'trend rather than being dropped.</p>' +
+        '<p>A monitoring page that silently loses transactions is worse than one ' +
+        'that admits to them, so the bucket is shown at full size and labelled.' +
+        '</p>');
+      h += gcard('Mess you can still see',
         '<p>Currency holds both <code>MYR</code> and <code>RM</code> for the ' +
         'same currency, plus <code>NA</code>, <code>#N/A</code> and a numeric ' +
-        '<code>458</code>. Risk and exposure treats both ringgit spellings as ' +
-        'domestic and reports the unresolvable values separately instead of ' +
-        'folding them into a headline.</p></div>';
+        '<code>458</code>.</p>' +
+        '<p>Risk and exposure treats both ringgit spellings as domestic and ' +
+        'reports the unresolvable values separately, instead of folding them ' +
+        'into a cross-border headline that would read eleven points too high.' +
+        '</p>');
       h += '</div>';
+      h += '<div class=""fco-sec"" style=""margin-top:2px"">' +
+        '<h3>What cleaning actually moved</h3>' +
+        gBar('posting_date parses as a date', 47.5, 93.0) +
+        gBar('txn_amount parses as a number', 81.7, 99.1) +
+        gBar('balance_after parses as a number', 70.5, 98.4) +
+        '<p class=""fco-dim"" style=""margin-top:9px"">Light bar is the raw ' +
+        'landing zone, solid bar is the gold layer. The gap that remains is ' +
+        'genuinely unrecoverable, not skipped.</p></div>';
       return h;
     }
 
-    // limits
     h += '<p class=""fco-lede"">Stated plainly, because a technique that hides ' +
       'its costs is being sold rather than explained.</p>';
-    h += '<div class=""fco-cols2"">';
-    h += '<div class=""fco-sec""><h3>Fixed slicing grain</h3>' +
+    h += '<div class=""fco-grow fco-cols2"">';
+    h += gcard('Fixed slicing grain',
       '<p>Each page ships a cube at one grain, so you can slice on the ' +
-      'dimensions shown and no others. Merchant has <b>250,004</b> members: ' +
-      'shipping it would blow the ceiling for a panel nobody could read, so ' +
-      'merchant category is the grain instead.</p></div>';
-    h += '<div class=""fco-sec""><h3>No cross-filtering out</h3>' +
-      '<p>A page receives filter context but cannot emit it. Clicking a bar ' +
-      'here will never drive a visual elsewhere. If that is a requirement, ' +
-      'Deneb binds real model fields and implements selection, at the cost of ' +
-      'Vega-Lite grammar.</p></div>';
-    h += '<div class=""fco-sec""><h3>Export returns markup</h3>' +
-      '<p>Export data gives you the HTML the measure produced, not rows. The ' +
-      'visual is uncertified, which also rules out PDF and PowerPoint export. ' +
-      'Certification requires no external loading, so it is incompatible with ' +
-      'the technique rather than merely absent.</p></div>';
-    h += '<div class=""fco-sec""><h3>Synthetic data</h3>' +
-      '<p>Every figure in this pack is generated. The volumes, the mess and ' +
-      'the pipeline are real engineering; the transactions are not. No ' +
-      'conclusion here describes a real institution.</p></div>';
+      'dimensions shown and no others.</p>' +
+      '<p>Merchant has <b>250,004</b> members: shipping it would blow the ' +
+      'ceiling for a panel nobody could read, so merchant category is the grain ' +
+      'instead. A merchant-level question needs a page that ships a merchant ' +
+      'cube.</p>');
+    h += gcard('No cross-filtering out',
+      '<p>A page receives filter context but cannot emit it. Clicking a bar here ' +
+      'will never drive a visual elsewhere.</p>' +
+      '<p>If that is a requirement, Deneb binds real model fields and implements ' +
+      'selection, at the cost of Vega-Lite grammar and extra measures whose only ' +
+      'job is pre-formatting text and colour.</p>');
+    h += gcard('Export returns markup',
+      '<p>Export data gives you the HTML the measure produced, not rows.</p>' +
+      '<p>The visual is uncertified, which also rules out PDF and PowerPoint ' +
+      'export. Certification requires no external loading, so it is ' +
+      'fundamentally incompatible with the technique rather than merely ' +
+      'missing.</p>');
+    h += gcard('Synthetic data',
+      '<p>Every figure in this pack is generated. The volumes, the mess and the ' +
+      'pipeline are real engineering; the transactions are not.</p>' +
+      '<p>No conclusion here describes a real institution, and none of it should ' +
+      'be quoted as if it did.</p>');
     h += '</div>';
     return h;
   }
+
+  function gBar(label, before, after) {
+    return '<div class=""fco-ba""><div class=""fco-bal"">' + esc(label) + '</div>' +
+      '<div class=""fco-bab""><div class=""fco-baf raw"" style=""width:' +
+      before.toFixed(1) + '%""></div>' +
+      '<div class=""fco-baf gold"" style=""width:' + after.toFixed(1) + '%""></div>' +
+      '</div><div class=""fco-bav"">' + before.toFixed(1) + '% &rarr; <b>' +
+      after.toFixed(1) + '%</b></div></div>';
+  }
+
+  function gcard(title, body) {
+    return '<div class=""fco-sec""><h3>' + esc(title) + '</h3>' + body + '</div>';
+  }
+
+  /* How the score is assembled, so ""crossing a threshold"" has something
+   * concrete behind it: the weights are what turn firings into a number. */
+  function gScoreComposition() {
+    var rules = (D.dim && D.dim.rules) || [];
+    var m = D.meta || {};
+    if (!rules.length) return '';
+    var maxW = 0, i;
+    for (i = 0; i < rules.length; i++) { if (rules[i][1] > maxW) maxW = rules[i][1]; }
+    var total = 0;
+    for (i = 0; i < rules.length; i++) { total += rules[i][1]; }
+
+    var h = '<div class=""fco-sec""><h3>How a score is built</h3>' +
+      '<p>Each rule that fires adds its weight. Every rule firing at once would ' +
+      'score <b>' + total + '</b>; the alert threshold is <b>' +
+      esc(m.threshold || 60) + '</b>, so it takes a combination, not one rule.</p>' +
+      '<div class=""fco-wt"">';
+    for (i = 0; i < rules.length; i++) {
+      var r = rules[i];
+      var w = maxW ? (r[1] / maxW) * 100 : 0;
+      h += '<div class=""fco-wtr""><div class=""fco-wtl"" title=""' + esc(r[0]) + '"">' +
+        esc(r[0]) + '</div>' +
+        '<div class=""fco-wtb""><div class=""fco-wtf"" style=""width:' +
+        w.toFixed(1) + '%""></div></div>' +
+        '<div class=""fco-wtv"">+' + esc(r[1]) + '</div></div>';
+    }
+    return h + '</div></div>';
+  }
+
 
   function gstat(v, l) {
     return '<div class=""fco-stat""><div class=""fco-stat-v"">' + v +
