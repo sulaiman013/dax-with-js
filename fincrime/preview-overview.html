@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Financial Crime Overview - harness</title>
+<style>
+ *{box-sizing:border-box} body{margin:0;height:100vh;display:flex;flex-direction:column;
+   font:12.5px/1.5 "Segoe UI",system-ui,sans-serif;background:#0f172a;color:#e2e8f0}
+ body>header{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:7px 12px;
+   background:#1e293b;border-bottom:1px solid #334155}
+ body>header>h1{font-size:12px;margin:0 8px 0 0}
+ button{font:inherit;padding:4px 9px;border-radius:6px;border:1px solid #475569;
+   background:#334155;color:#e2e8f0;cursor:pointer}
+ button.p{background:#2d6a4f;border-color:#2d6a4f;color:#fff;font-weight:600}
+ #stage{flex:1 1 auto;min-height:0;position:relative}
+ #host{position:absolute;inset:0;overflow:hidden;background:#fff}
+ #log{flex:0 0 auto;max-height:86px;overflow:auto;padding:5px 12px;background:#020617;
+   font:11px/1.5 Consolas,monospace;color:#94a3b8;border-top:1px solid #1e293b}
+ #log .e{color:#f87171} #log .o{color:#4ade80}
+ #sz{font:11px Consolas,monospace;color:#94a3b8}
+</style></head><body>
+<header><h1>Financial Crime Overview harness</h1>
+ <button class="p" id="xf">Simulate cross-filter</button>
+ <button id="rm">Remount</button>
+ <button id="rc">Reconcile</button>
+ <span id="sz"></span></header>
+<div id="stage"><div id="host"></div></div>
+<div id="log"></div>
+<script src="overview-fixture.js"></script>
+<script>
+// The visual rewrites its DOM and re-inserts BOTH script tags on every
+// cross-filter, resize and refresh. This harness does exactly that, because a
+// render that is only correct the first time is the single most common failure
+// of this technique.
+var CLOSE='<'+'/script>', BS=String.fromCharCode(92);
+var logEl=document.getElementById('log');
+function log(m,c){var d=document.createElement('div');if(c)d.className=c;
+  d.textContent=new Date().toISOString().slice(11,23)+'  '+m;logEl.appendChild(d);logEl.scrollTop=1e9;}
+
+function emit(){
+  var json=JSON.stringify(window.FC_FIXTURE).replace(/</g,BS+'u003C');
+  document.getElementById('sz').textContent=' payload '+json.length.toLocaleString()+' chars ('+
+    (json.length/2100000*100).toFixed(1)+'% of the ~2,100,000 cap)';
+  return "<div id='fco-root'></div><script>window.__fcData="+json+
+    ";if(window.FCO&&window.FCO.render){window.FCO.render();}"+CLOSE+
+    "<script src='fincrime-overview.js'>"+CLOSE;
+}
+function inject(host,html){
+  host.innerHTML=html;
+  var s=host.querySelectorAll('script');
+  for(var i=0;i<s.length;i++){
+    var o=s[i],f=document.createElement('script');
+    for(var a=0;a<o.attributes.length;a++)f.setAttribute(o.attributes[a].name,o.attributes[a].value);
+    if(!o.src)f.appendChild(document.createTextNode(o.textContent));
+    else{f.onload=function(){log('external script executed');};
+         f.onerror=function(){log('script FAILED to load','e');};}
+    o.parentNode.replaceChild(f,o);
+  }
+}
+function mount(){document.getElementById('stage').innerHTML='<div id="host"></div>';
+  inject(document.getElementById('host'),emit());log('mounted');}
+
+document.getElementById('xf').addEventListener('click',function(){
+  var h=document.getElementById('host');
+  var before=h.querySelectorAll('.fco').length;
+  inject(h,emit());
+  setTimeout(function(){
+    var after=h.querySelectorAll('.fco').length;
+    var st=document.querySelectorAll('#fco-css').length;
+    var ok=(after===1&&st===1);
+    var msg='cross-filter: roots '+before+'->'+after+', style tags='+st;
+    log(ok?msg+'  OK idempotent':msg+'  NOT IDEMPOTENT',ok?'o':'e');
+  },300);
+});
+document.getElementById('rm').addEventListener('click',mount);
+
+// Independent check that the cube sums to the model's own totals. If this
+// disagrees, the page is confidently wrong and the harness should say so.
+document.getElementById('rc').addEventListener('click',function(){
+  var F=window.FC_FIXTURE,c=F.cube,t=0,a=0;
+  for(var i=0;i<c.length;i+=8){t+=c[i+4];a+=c[i+5];}
+  var okT=(t===F.totals.txns), okA=(a===F.totals.amt);
+  log('cube txns '+t.toLocaleString()+' vs model '+F.totals.txns.toLocaleString()+
+      '  '+(okT?'OK':'MISMATCH'),okT?'o':'e');
+  log('cube sen  '+a.toLocaleString()+' vs model '+F.totals.amt.toLocaleString()+
+      '  '+(okA?'OK':'MISMATCH'),okA?'o':'e');
+  log('cells '+(c.length/8).toLocaleString()+
+      ', dims '+F.dim.months.length+'m x '+F.dim.channels.length+'ch x '+
+      F.dim.bands.length+'bd x '+F.dim.types.length+'tp');
+});
+
+window.addEventListener('error',function(e){log('error: '+(e.message||e.type),'e');});
+mount();
+</script></body></html>

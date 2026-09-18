@@ -1,0 +1,43 @@
+// ============================================================================
+// Financial Crime - report guide
+// ----------------------------------------------------------------------------
+// The lightest measure in the pack. The guide explains the report rather than
+// querying it, so it ships a handful of headline figures and nothing else.
+//
+// Those figures are still live: quoting a stale row count in a guide is how a
+// report starts lying about itself.
+// ============================================================================
+
+Guide =
+VAR TotTxns = CALCULATE ( [Transactions], ALLSELECTED () )
+VAR TotAmt = CALCULATE ( ROUND ( [Total Amount] * 100, 0 ), ALLSELECTED () )
+VAR TotAlerts = CALCULATE ( [Alerts Raised], ALLSELECTED () )
+VAR TotCust = CALCULATE ( [Distinct Customers], ALLSELECTED () )
+VAR TotFire = CALCULATE ( [Rule Firings], ALLSELECTED () )
+VAR TotDec =
+    CALCULATE ( [Transactions], ALLSELECTED (), NOT ISBLANK ( fact_transaction[auth_approved] ) )
+VAR Undecided = TotTxns - TotDec
+VAR Months =
+    CALCULATE ( COUNTROWS ( SUMMARIZE ( ALL ( dim_date ), dim_date[yr], dim_date[mth] ) ) )
+VAR AlertRate = DIVIDE ( TotAlerts, TotTxns )
+
+VAR Payload =
+    "window.__fcData={page:'guide',currency:'RM',dim:{bands:['LOW','MEDIUM','HIGH']},"
+        & "meta:{"
+            & "txns:" & FORMAT ( COALESCE ( TotTxns, 0 ), "0" )
+            & ",amt:" & FORMAT ( COALESCE ( TotAmt, 0 ), "0" )
+            & ",alerts:" & FORMAT ( COALESCE ( TotAlerts, 0 ), "0" )
+            & ",customers:" & FORMAT ( COALESCE ( TotCust, 0 ), "0" )
+            & ",firings:" & FORMAT ( COALESCE ( TotFire, 0 ), "0" )
+            & ",undecided:" & FORMAT ( COALESCE ( Undecided, 0 ), "0" )
+            & ",months:" & FORMAT ( COALESCE ( Months, 0 ), "0" )
+            & ",dupes:593209"
+            & ",alertRate:" & FORMAT ( COALESCE ( AlertRate, 0 ), "0.00000" )
+            & ",analystYears:" & FORMAT ( DIVIDE ( TotAlerts, 50000 ), "0.0" )
+        & "}};"
+
+RETURN
+    "<div id='fco-root'></div>"
+        & "<script>" & Payload
+        & "if(window.FCO&&window.FCO.render){window.FCO.render();}"
+        & "</script>"

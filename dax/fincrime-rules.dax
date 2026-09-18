@@ -1,0 +1,142 @@
+// ============================================================================
+// Financial Crime - rule effectiveness
+// ----------------------------------------------------------------------------
+// Three small cubes rather than one big one, because this page asks three
+// different questions and none of them needs the month x channel grain the
+// Overview ships.
+//
+//   rules  one row per rule            7 rows
+//   fired  rules_fired x band          8 x 3
+//   hist   risk score bucketed by 5    30 rows
+//
+// The threshold table on the page is derived from `hist` in the browser: the
+// alert count at any cut-off is just the tail sum. That keeps a what-if control
+// entirely client side instead of a measure per scenario.
+//
+// SUMMARIZE + ADDCOLUMNS throughout, never SUMMARIZECOLUMNS, which cannot be
+// evaluated inside a measure under an external filter context.
+// ============================================================================
+
+Rule Effectiveness =
+VAR BS = UNICHAR ( 92 )
+
+VAR RuleRows =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            fact_alert,
+            dim_risk_rule[rule_id], dim_risk_rule[rule_name], dim_risk_rule[weight]
+        ),
+        "fires", [Rule Firings],
+        "wrule", [Transactions With Any Rule]
+    )
+
+VAR RulesJs =
+    CONCATENATEX (
+        RuleRows,
+        "['" & SUBSTITUTE ( dim_risk_rule[rule_id], "'", BS & "'" ) & "','"
+            & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                dim_risk_rule[rule_name], BS, BS & BS ), "'", BS & "'" ),
+                UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ), "<", BS & "u003C" ) & "',"
+            & FORMAT ( COALESCE ( dim_risk_rule[weight], 0 ), "0" ) & ","
+            & FORMAT ( COALESCE ( [fires], 0 ), "0" ) & ","
+            & FORMAT ( COALESCE ( [wrule], 0 ), "0" ) & "]",
+        ",", [fires], DESC
+    )
+
+// Bands are asserted in severity order; the renderer colours 0/1/2 as
+// low/medium/high and any other order mislabels every bar.
+VAR BandsIdx =
+    SELECTCOLUMNS (
+        { ( "LOW", 0 ), ( "MEDIUM", 1 ), ( "HIGH", 2 ) },
+        "lbl", [Value1],
+        "idx", [Value2]
+    )
+
+VAR FiredRows =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            fact_transaction,
+            fact_transaction[rules_fired], fact_transaction[risk_band]
+        ),
+        "txns", [Transactions]
+    )
+
+VAR FiredJs =
+    CONCATENATEX (
+        FILTER ( FiredRows, [txns] > 0 ),
+        VAR _bl = COALESCE ( fact_transaction[risk_band], "(blank)" )
+        VAR _bi = MAXX ( FILTER ( BandsIdx, [lbl] = _bl ), [idx] )
+        RETURN
+            FORMAT ( COALESCE ( fact_transaction[rules_fired], 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( _bi, 0 ), "0" ) & ","
+                & FORMAT ( [txns], "0" ),
+        ","
+    )
+
+// Bucket the score by 5. INT(score/5)*5 gives the bucket start, which the
+// browser uses both as the axis label and as the threshold comparison.
+VAR HistRows =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            fact_transaction,
+            fact_transaction[risk_score]
+        ),
+        "bkt", INT ( COALESCE ( fact_transaction[risk_score], 0 ) / 5 ) * 5,
+        "txns", [Transactions]
+    )
+VAR HistGrouped =
+    GROUPBY (
+        HistRows,
+        [bkt],
+        "n", SUMX ( CURRENTGROUP (), [txns] )
+    )
+VAR HistJs =
+    CONCATENATEX (
+        HistGrouped,
+        FORMAT ( [bkt], "0" ) & "," & FORMAT ( COALESCE ( [n], 0 ), "0" ),
+        ",", [bkt], ASC
+    )
+
+VAR TotTxns = CALCULATE ( [Transactions], ALLSELECTED () )
+VAR TotAlerts = CALCULATE ( [Alerts Raised], ALLSELECTED () )
+VAR TotFire = CALCULATE ( [Rule Firings], ALLSELECTED () )
+VAR TotWithRule = CALCULATE ( [Transactions With Any Rule], ALLSELECTED () )
+
+// The alert threshold is where the HIGH band actually starts, read from the
+// data. Hardcoding it put the marker at 70 while the band begins at 60, so the
+// page highlighted the wrong row and drew the line in the wrong place while the
+// KPI above it reported the real number. A constant that must agree with the
+// model is a constant that will eventually disagree with it.
+VAR Threshold =
+    CALCULATE (
+        MIN ( fact_transaction[risk_score] ),
+        ALLSELECTED (),
+        fact_transaction[risk_band] = "HIGH"
+    )
+VAR MedThreshold =
+    CALCULATE (
+        MIN ( fact_transaction[risk_score] ),
+        ALLSELECTED (),
+        fact_transaction[risk_band] = "MEDIUM"
+    )
+
+VAR Payload =
+    "window.__fcData={page:'rules',currency:'RM',dim:{"
+        & "bands:['LOW','MEDIUM','HIGH'],"
+        & "rules:[" & RulesJs & "]},"
+        & "fired:[" & FiredJs & "],"
+        & "hist:[" & HistJs & "],"
+        & "meta:{"
+            & "txns:" & FORMAT ( COALESCE ( TotTxns, 0 ), "0" )
+            & ",alerts:" & FORMAT ( COALESCE ( TotAlerts, 0 ), "0" )
+            & ",firings:" & FORMAT ( COALESCE ( TotFire, 0 ), "0" )
+            & ",txnsWithRule:" & FORMAT ( COALESCE ( TotWithRule, 0 ), "0" )
+            & ",threshold:" & FORMAT ( COALESCE ( Threshold, 60 ), "0" )
+            & ",medThreshold:" & FORMAT ( COALESCE ( MedThreshold, 30 ), "0" )
+        & "}};"
+
+RETURN
+    "<div id='fco-root'></div>"
+        & "<script>" & Payload
+        & "if(window.FCO&&window.FCO.render){window.FCO.render();}"
+        & "</script>"

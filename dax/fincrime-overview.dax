@@ -1,0 +1,250 @@
+// ============================================================================
+// Financial Crime Overview - the data half of the page
+// ----------------------------------------------------------------------------
+// Model : fincrime_model (Direct Lake, 49,406,790 transactions)
+// Render: fincrime/fincrime-overview.js
+//
+// This file holds the VAR block. `fincrime/build-measure.py` lifts everything
+// from `VAR BS` down to the RETURN and pairs it with the inlined renderer to
+// produce dax/fincrime-overview-inline.dax, which is what you actually paste
+// into a measure. Edit here, then rebuild.
+//
+// WHY THIS SHIPS A CUBE AND NOT FACTS
+// ----------------------------------------------------------------------------
+// The trailpeak measures ship facts at grain, which is right at 40,237 rows.
+// This fact table has 49,406,790. At roughly 35 characters a row that is about
+// 1.7 BILLION characters against a ~2,100,000 ceiling.
+//
+// So this aggregates to a cube: month x channel x risk band x transaction type.
+// At most 31 x 9 x 3 x 3 = 2,511 cells, of which 2,508 are populated, landing
+// near 85,000 characters. About 4% of the ceiling, from a 49.4M row table.
+// The browser re-aggregates that cube on every click, so filtering never
+// touches the model again.
+//
+// SCALING CONVENTION
+// ----------------------------------------------------------------------------
+// Money is INTEGER MINOR UNITS (sen). FORMAT(x, "0") emits no digit separator
+// in any locale, so a de-DE workspace cannot turn 1234.56 into "1234,56" and
+// silently break the payload. The browser divides by 100.
+//
+// WHY `decided` IS ITS OWN COLUMN
+// ----------------------------------------------------------------------------
+// 8,860,412 transactions never received an authorisation decision. Approvals
+// over ALL transactions reports 32.3%; over those that got a decision it
+// reports 39.38%, which is what [Approval Rate] returns. The cube carries the
+// numerator and its own denominator so the page cannot get this wrong.
+//
+// HOW THE INDEXES ARE RESOLVED
+// ----------------------------------------------------------------------------
+// Each cube row carries integer indexes into the dimension arrays, not text.
+// The lookups capture the current value into a VAR first and then filter the
+// dimension table on that VAR. EARLIER is deliberately not used: inside
+// CONCATENATEX over SUMMARIZECOLUMNS the row context it would reach for is not
+// the one you want, and the failure is silent rather than an error.
+//
+// Blanks are real members here (935,771 transactions have no txn_type, and
+// rows whose date never parsed sit on the Unknown date member), so every
+// dimension is built over a COALESCEd label. Dropping blanks would quietly
+// change every total on the page.
+// ============================================================================
+
+Financial Crime Overview =
+VAR BS = UNICHAR ( 92 )
+
+// -- dimension member lists --------------------------------------------------
+// Index order is fixed here and the JavaScript depends on it.
+
+VAR MonthRows =
+    ADDCOLUMNS (
+        SUMMARIZE ( ALL ( dim_date ), dim_date[yr], dim_date[mth] ),
+        "mkey", COALESCE ( dim_date[yr], 0 ) * 100 + COALESCE ( dim_date[mth], 0 )
+    )
+VAR Months = SUMMARIZE ( MonthRows, [mkey] )
+VAR MonthsIdx =
+    ADDCOLUMNS ( Months, "idx", RANKX ( Months, [mkey], , ASC, DENSE ) - 1 )
+
+VAR ChanRows =
+    ADDCOLUMNS (
+        SUMMARIZE ( ALL ( dim_channel ), dim_channel[channel] ),
+        "lbl", COALESCE ( dim_channel[channel], "(blank)" )
+    )
+VAR Chans = SUMMARIZE ( ChanRows, [lbl] )
+VAR ChansIdx = ADDCOLUMNS ( Chans, "idx", RANKX ( Chans, [lbl], , ASC, DENSE ) - 1 )
+
+// Severity order is asserted, not discovered. The renderer colours band 0/1/2
+// as low/medium/high, so a different order would mislabel every bar.
+VAR BandsIdx =
+    SELECTCOLUMNS (
+        { ( "LOW", 0 ), ( "MEDIUM", 1 ), ( "HIGH", 2 ) },
+        "lbl", [Value1],
+        "idx", [Value2]
+    )
+
+VAR TypeRows =
+    ADDCOLUMNS (
+        SUMMARIZE ( ALL ( fact_transaction ), fact_transaction[txn_type] ),
+        "lbl", COALESCE ( fact_transaction[txn_type], "(blank)" )
+    )
+VAR Types = SUMMARIZE ( TypeRows, [lbl] )
+VAR TypesIdx = ADDCOLUMNS ( Types, "idx", RANKX ( Types, [lbl], , ASC, DENSE ) - 1 )
+
+// -- the cube ----------------------------------------------------------------
+// Flat comma-separated integers, stride 8. Arrays of objects would roughly
+// triple the character count for nothing.
+
+// SUMMARIZE + ADDCOLUMNS, NOT SUMMARIZECOLUMNS. SUMMARIZECOLUMNS cannot be
+// evaluated inside a measure that is itself evaluated under an external filter
+// context, which is exactly what a visual does. It works perfectly in an
+// EVALUATE query, because a query has no such context, so this failure does not
+// reproduce in testing: the visual just reports "Something's wrong with one or
+// more fields" while the identical DAX runs clean as a query.
+//
+// SUMMARIZE groups fact_transaction and reaches the dimension columns through
+// the existing many-to-one relationships. ADDCOLUMNS then supplies the measures,
+// with CALCULATE providing context transition per group.
+VAR CubeRows =
+    FILTER (
+        ADDCOLUMNS (
+            SUMMARIZE (
+                fact_transaction,
+                dim_date[yr], dim_date[mth],
+                dim_channel[channel],
+                fact_transaction[risk_band],
+                fact_transaction[txn_type]
+            ),
+            "txns", [Transactions],
+            "amt", ROUND ( CALCULATE ( SUM ( fact_transaction[txn_amount] ) ) * 100, 0 ),
+            "appr", CALCULATE ( [Transactions], fact_transaction[auth_approved] = TRUE () ),
+            "decd", CALCULATE ( [Transactions], NOT ISBLANK ( fact_transaction[auth_approved] ) )
+        ),
+        [txns] > 0
+    )
+
+VAR CubeJs =
+    CONCATENATEX (
+        CubeRows,
+        VAR _mk = COALESCE ( dim_date[yr], 0 ) * 100 + COALESCE ( dim_date[mth], 0 )
+        VAR _cl = COALESCE ( dim_channel[channel], "(blank)" )
+        VAR _bl = COALESCE ( fact_transaction[risk_band], "(blank)" )
+        VAR _tl = COALESCE ( fact_transaction[txn_type], "(blank)" )
+        VAR _mi = MAXX ( FILTER ( MonthsIdx, [mkey] = _mk ), [idx] )
+        VAR _ci = MAXX ( FILTER ( ChansIdx, [lbl] = _cl ), [idx] )
+        VAR _bi = MAXX ( FILTER ( BandsIdx, [lbl] = _bl ), [idx] )
+        VAR _ti = MAXX ( FILTER ( TypesIdx, [lbl] = _tl ), [idx] )
+        RETURN
+            FORMAT ( COALESCE ( _mi, 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( _ci, 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( _bi, 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( _ti, 0 ), "0" ) & ","
+                & FORMAT ( [txns], "0" ) & ","
+                & FORMAT ( COALESCE ( [amt], 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( [appr], 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( [decd], 0 ), "0" ),
+        ","
+    )
+
+// -- dimension payloads ------------------------------------------------------
+// Text members go through the escape chain: backslash FIRST, or the backslash
+// added for the quote gets doubled. `<` becomes < so a value can never
+// close the script block early.
+
+VAR MonthsJs =
+    CONCATENATEX (
+        MonthsIdx,
+        "[" & FORMAT ( [mkey], "0" ) & ",'"
+            & IF (
+                [mkey] = 0,
+                "Unknown",
+                FORMAT ( DATE ( INT ( [mkey] / 100 ), MOD ( [mkey], 100 ), 1 ), "MMM yyyy" )
+            )
+            & "']",
+        ",", [idx], ASC
+    )
+
+VAR ChannelsJs =
+    CONCATENATEX (
+        ChansIdx,
+        "'" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+            [lbl], BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+            UNICHAR ( 10 ), " " ), "<", BS & "u003C" ) & "'",
+        ",", [idx], ASC
+    )
+
+VAR BandsJs = "'LOW','MEDIUM','HIGH'"
+
+VAR TypesJs =
+    CONCATENATEX (
+        TypesIdx,
+        "'" & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+            [lbl], BS, BS & BS ), "'", BS & "'" ), UNICHAR ( 13 ), " " ),
+            UNICHAR ( 10 ), " " ), "<", BS & "u003C" ) & "'",
+        ",", [idx], ASC
+    )
+
+// SUMMARIZECOLUMNS, not ADDCOLUMNS over SUMMARIZE(ALL(...)). The latter needs
+// CALCULATE to convert each row into filter context, and an ALLSELECTED() filter
+// argument then removes the very rule filter the transition just established,
+// so every rule reports the grand total: 65,088,689 firings each. It also
+// yields a blank Unknown-member row. SUMMARIZECOLUMNS groups properly and drops
+// the empty group on its own.
+// Same restriction as the cube above.
+VAR RuleRows =
+    ADDCOLUMNS (
+        SUMMARIZE (
+            fact_alert,
+            dim_risk_rule[rule_id], dim_risk_rule[rule_name], dim_risk_rule[weight]
+        ),
+        "fires", [Rule Firings],
+        "wrule", [Transactions With Any Rule]
+    )
+
+VAR RulesJs =
+    CONCATENATEX (
+        FILTER ( RuleRows, NOT ISBLANK ( [fires] ) ),
+        "['" & SUBSTITUTE ( dim_risk_rule[rule_id], "'", BS & "'" ) & "','"
+            & SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE ( SUBSTITUTE (
+                dim_risk_rule[rule_name], BS, BS & BS ), "'", BS & "'" ),
+                UNICHAR ( 13 ), " " ), UNICHAR ( 10 ), " " ), "<", BS & "u003C" ) & "',"
+            & FORMAT ( COALESCE ( dim_risk_rule[weight], 0 ), "0" ) & ","
+            & FORMAT ( COALESCE ( [fires], 0 ), "0" ) & ","
+            & FORMAT ( COALESCE ( [wrule], 0 ), "0" ) & "]",
+        ",", [fires], DESC
+    )
+
+// -- unfiltered totals, so the page can say how much is in scope -------------
+
+VAR TotTxns = CALCULATE ( [Transactions], ALLSELECTED () )
+VAR TotAmt = CALCULATE ( ROUND ( [Total Amount] * 100, 0 ), ALLSELECTED () )
+VAR TotAlerts = CALCULATE ( [Alerts Raised], ALLSELECTED () )
+VAR TotExp = CALCULATE ( ROUND ( [Exposure at Risk] * 100, 0 ), ALLSELECTED () )
+VAR TotCust = CALCULATE ( [Distinct Customers], ALLSELECTED () )
+VAR TotAppr =
+    CALCULATE ( [Transactions], ALLSELECTED (), fact_transaction[auth_approved] = TRUE () )
+VAR TotDec =
+    CALCULATE ( [Transactions], ALLSELECTED (), NOT ISBLANK ( fact_transaction[auth_approved] ) )
+VAR TotFire = CALCULATE ( [Rule Firings], ALLSELECTED () )
+
+VAR Payload =
+    "window.__fcData={page:'overview',currency:'RM',dim:{"
+        & "months:[" & MonthsJs & "],"
+        & "channels:[" & ChannelsJs & "],"
+        & "bands:[" & BandsJs & "],"
+        & "types:[" & TypesJs & "],"
+        & "rules:[" & RulesJs & "]},"
+        & "cube:[" & CubeJs & "],"
+        & "totals:{"
+            & "txns:" & FORMAT ( COALESCE ( TotTxns, 0 ), "0" )
+            & ",alerts:" & FORMAT ( COALESCE ( TotAlerts, 0 ), "0" )
+            & ",amt:" & FORMAT ( COALESCE ( TotAmt, 0 ), "0" )
+            & ",exposure:" & FORMAT ( COALESCE ( TotExp, 0 ), "0" )
+            & ",customers:" & FORMAT ( COALESCE ( TotCust, 0 ), "0" )
+            & ",approved:" & FORMAT ( COALESCE ( TotAppr, 0 ), "0" )
+            & ",decided:" & FORMAT ( COALESCE ( TotDec, 0 ), "0" )
+            & ",firings:" & FORMAT ( COALESCE ( TotFire, 0 ), "0" )
+        & "}};"
+
+RETURN
+    "<div id='fco-root'></div>"
+        & "<script>" & Payload
+        & "if(window.FCO&&window.FCO.render){window.FCO.render();}"
+        & "</script>"
