@@ -364,10 +364,10 @@ VAR Lib = "(function () {
     '.fco-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;',
     'align-items:start;}',
     '.fco-sec{background:var(--surface);border:1px solid var(--line);',
-    'border-radius:10px;padding:13px 15px 14px;}',
+    'border-radius:10px;padding:15px 17px 16px;}',
     '.fco-sec h3{font-size:10.5px;font-weight:660;letter-spacing:.07em;',
     'text-transform:uppercase;color:var(--accent);margin-bottom:9px;}',
-    '.fco-sec p{font-size:12px;color:var(--ink2);line-height:1.55;margin-bottom:7px;}',
+    '.fco-sec p{font-size:12.5px;color:var(--ink2);line-height:1.6;margin-bottom:8px;}',
     '.fco-sec p:last-child{margin-bottom:0;}',
     '.fco-sec b{font-weight:640;color:var(--ink);}',
     '.fco-step{display:flex;gap:10px;margin-bottom:9px;font-size:12px;',
@@ -403,6 +403,100 @@ VAR Lib = "(function () {
     'pointer-events:none;}',
     '.fco-thr::after{content:attr(data-l);position:absolute;top:-1px;left:5px;',
     'font-size:10px;font-weight:660;color:var(--crit);white-space:nowrap;}',
+    /* guide: nav + body ----------------------------------------------------- */
+    '.fco-gwrap{flex:1 1 auto;min-height:0;display:grid;',
+    'grid-template-columns:196px 1fr;gap:0;}',
+    '.fco-gnav{border-right:1px solid var(--line);background:var(--surface);',
+    'padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow:auto;}',
+    '.fco-gn{display:flex;align-items:center;gap:9px;padding:7px 10px;',
+    'border-radius:7px;cursor:pointer;font-size:12px;color:var(--ink2);',
+    'transition:background .15s var(--ease),color .15s var(--ease);',
+    'user-select:none;}',
+    '.fco-gn:hover{background:var(--sunken);color:var(--ink);}',
+    '.fco-gn.on{background:var(--accent-weak);color:oklch(.30 .12 145);',
+    'font-weight:640;}',
+    '.fco-gnn{flex:0 0 18px;height:18px;border-radius:50%;background:var(--sunken);',
+    'font-size:10px;font-weight:660;display:flex;align-items:center;',
+    'justify-content:center;color:var(--ink3);}',
+    '.fco-gn.on .fco-gnn{background:var(--accent);color:oklch(.98 .02 130);}',
+    '.fco-gbody{min-width:0;min-height:0;overflow:auto;padding:18px 24px 22px;}',
+    '.fco-gbody .fco-lede{font-size:13.5px;color:var(--ink2);max-width:84ch;',
+    'line-height:1.6;margin:0 0 14px;}',
+    '.fco-gbody code{font-family:Consolas,monospace;font-size:11.5px;',
+    'background:var(--sunken);padding:1px 4px;border-radius:3px;}',
+    '.fco-dim{color:var(--ink3);font-size:11px;margin-top:8px;}',
+    '.fco-cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px;',
+    'margin-bottom:14px;}',
+
+    /* headline stats -------------------------------------------------------- */
+    '.fco-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;',
+    'margin-bottom:14px;}',
+    '.fco-stat{background:var(--surface);border:1px solid var(--line);',
+    'border-radius:9px;padding:13px 14px;}',
+    '.fco-stat-v{font-size:19px;font-weight:660;letter-spacing:-.015em;}',
+    '.fco-stat-l{font-size:10.5px;color:var(--ink3);margin-top:1px;}',
+
+    /* pipeline -------------------------------------------------------------- */
+    '.fco-pipe{display:flex;align-items:stretch;gap:0;margin-bottom:14px;}',
+    '.fco-stage{flex:1 1 0;min-width:0;background:var(--surface);',
+    'border:1px solid var(--line);border-radius:9px;padding:13px 13px;',
+    'cursor:pointer;transition:border-color .15s var(--ease),',
+    'background .15s var(--ease);user-select:none;}',
+    '.fco-stage:hover{border-color:var(--line2);}',
+    '.fco-stage.on{border-color:var(--accent);background:var(--accent-weak);}',
+    '.fco-stage-n{width:17px;height:17px;border-radius:50%;background:var(--sunken);',
+    'color:var(--ink3);font-size:9.5px;font-weight:660;display:flex;',
+    'align-items:center;justify-content:center;margin-bottom:6px;}',
+    '.fco-stage.on .fco-stage-n{background:var(--accent);color:oklch(.98 .02 130);}',
+    '.fco-stage-t{font-size:12px;font-weight:640;white-space:nowrap;',
+    'overflow:hidden;text-overflow:ellipsis;}',
+    '.fco-stage-s{font-size:10.5px;color:var(--ink3);white-space:nowrap;',
+    'overflow:hidden;text-overflow:ellipsis;}',
+    '.fco-arrow{flex:0 0 18px;display:flex;align-items:center;',
+    'justify-content:center;color:var(--line2);font-size:17px;}',
+
+    /* firing vs alert comparison -------------------------------------------- */
+    '.fco-compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;',
+    'margin-bottom:14px;}',
+    '.fco-cmp{background:var(--surface);border:1px solid var(--line);',
+    'border-radius:10px;padding:15px 17px 16px;}',
+    '.fco-cmp-t{font-size:11px;font-weight:660;letter-spacing:.04em;',
+    'text-transform:uppercase;color:var(--ink3);margin-bottom:9px;}',
+    '.fco-cmp-bar{height:13px;background:var(--sunken);border-radius:7px;',
+    'overflow:hidden;margin-bottom:8px;}',
+    '.fco-cmp-f{height:100%;border-radius:7px;transition:width .35s var(--ease);}',
+    '.fco-cmp-f.bad{background:var(--high);}',
+    '.fco-cmp-f.good{background:var(--accent);}',
+    '.fco-cmp-v{font-size:19px;font-weight:660;letter-spacing:-.015em;}',
+    '.fco-cmp-v span{font-size:11.5px;font-weight:500;color:var(--ink3);',
+    'letter-spacing:0;}',
+    '.fco-cmp-n{font-size:11.5px;color:var(--ink2);line-height:1.5;margin-top:6px;}',
+
+    /* threshold demonstrator ------------------------------------------------ */
+    '.fco-demo{background:var(--surface);border:1px solid var(--line);',
+    'border-radius:10px;padding:13px 15px 14px;}',
+    '.fco-demo-h{font-size:11px;font-weight:660;letter-spacing:.05em;',
+    'text-transform:uppercase;color:var(--accent);margin-bottom:9px;}',
+    '.fco-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px;}',
+    '.fco-demo-out{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;',
+    'margin-bottom:12px;}',
+    '.fco-do{background:var(--sunken);border-radius:8px;padding:11px 13px;}',
+    '.fco-do.lead{background:var(--accent-weak);}',
+    '.fco-dol{font-size:10px;font-weight:620;letter-spacing:.05em;',
+    'text-transform:uppercase;color:var(--ink3);}',
+    '.fco-dov{font-size:21px;font-weight:660;letter-spacing:-.015em;margin-top:2px;}',
+    '.fco-do.lead .fco-dov{color:oklch(.34 .14 145);}',
+    '.fco-demo-hist{display:flex;align-items:flex-end;gap:2px;height:190px;}',
+    '.fco-dhb{flex:1 1 0;min-width:0;height:100%;display:flex;',
+    'flex-direction:column;justify-content:flex-end;}',
+    '.fco-dhf{width:100%;background:var(--line2);border-radius:2px 2px 0 0;',
+    'transition:height .3s var(--ease),background .2s var(--ease);}',
+    '.fco-dhf.on{background:var(--high);}',
+    '.fco-demo-ax{display:flex;justify-content:space-between;font-size:9.5px;',
+    'color:var(--ink3);margin-top:3px;}',
+    '.fco-note{font-size:11.5px;color:var(--ink2);line-height:1.5;margin-top:10px;',
+    'padding-top:9px;border-top:1px solid var(--line);}',
+    '.fco-note b{font-weight:660;color:var(--ink);}',
     /* empty + error ------------------------------------------------------ */
     '.fco-empty{flex:1 1 auto;display:flex;align-items:center;justify-content:center;',
     'font-size:12px;color:var(--ink3);text-align:center;padding:16px;}',
@@ -417,7 +511,8 @@ VAR Lib = "(function () {
    * localStorage throws there. Survives the DOM being replaced on cross-filter.
    * ====================================================================== */
   var S = window.__fcState || (window.__fcState = {
-    ch: {}, bd: {}, tp: {}, m0: null, m1: null
+    ch: {}, bd: {}, tp: {}, m0: null, m1: null,
+    gsec: 'start', gstage: 0, gthr: null
   });
 
   var D = null, root = null, wired = null;
@@ -771,93 +866,366 @@ VAR Lib = "(function () {
 
   /* =========================================================================
    * GUIDE PAGE
-   * No cube: this page explains the report rather than querying it.
+   * Seven sections behind a nav, a pipeline you can open a stage at a time, and
+   * a threshold demonstrator that recomputes from the real score histogram.
+   *
+   * The demonstrator matters more than the prose around it. ""An alert is not a
+   * rule firing"" is a sentence people nod at and then forget; dragging the
+   * cut-off and watching 7.1m alerts become 51k, and 57 analysts become none,
+   * is the thing that actually lands.
    * ====================================================================== */
-  function renderGuide() {
-    var m = D.meta || {};
-    function sec(title, body) {
-      return '<div class=""fco-sec""><h3>' + esc(title) + '</h3>' + body + '</div>';
+
+  var GSECTIONS = [
+    ['start', 'Start here'],
+    ['pipeline', 'How the data gets here'],
+    ['alerts', 'Firing vs alert'],
+    ['pages', 'The pages'],
+    ['numbers', 'Reading the numbers'],
+    ['quality', 'Data quality'],
+    ['limits', 'What this cannot do']
+  ];
+
+  var GSTAGES = [
+    ['PostgreSQL', 'on-premises',
+     'A single wide table, 100 columns, every one of them text. Nothing is ' +
+     'cleaned on the way in: a landing zone that rejects rows is not a landing ' +
+     'zone. Values like <code>1,234.50</code>, <code>(45.00)</code>, ' +
+     '<code>RM99.00</code> and <code>9999-12-31</code> all land exactly as the ' +
+     'source produced them.'],
+    ['Open mirroring', 'Postgres to OneLake',
+     'Fabric cannot reach a database on localhost, and PostgreSQL on-premises ' +
+     'is not a supported native mirroring source. So the publisher writes ' +
+     'Parquet into a landing zone and Fabric applies it to Delta tables: an ' +
+     'initial seed, then continuous change data capture from the write-ahead ' +
+     'log. Inserts, updates and deletes all propagate.'],
+    ['DuckDB', 'clean, conform, model',
+     'Typing, parsing and conforming happen here, on 8 vCores. Five competing ' +
+     'date formats resolved, 32 spellings of one country collapsed to one code, ' +
+     'exact duplicates removed, then a star schema with explicit Unknown ' +
+     'members so no fact is ever orphaned by a missing dimension.'],
+    ['Direct Lake', 'the semantic model',
+     'Nine tables, eight relationships, seventeen measures over the gold layer. ' +
+     'Direct Lake reads the Delta files directly: no import, no refresh window, ' +
+     'and no copy of the data sitting in a second place going stale.'],
+    ['This report', 'one measure per page',
+     'Each page is a single HTML visual. Its measure aggregates in the model ' +
+     'and ships a compact cube; the browser does layout, ranking and filtering ' +
+     'from there. Clicking inside a page never queries the model again.']
+  ];
+
+  function gnav() {
+    var cur = S.gsec || 'start';
+    var h = '<div class=""fco-gnav"">';
+    for (var i = 0; i < GSECTIONS.length; i++) {
+      var id = GSECTIONS[i][0];
+      h += '<div class=""fco-gn' + (id === cur ? ' on' : '') +
+        '"" data-k=""gsec"" data-v=""' + id + '"">' +
+        '<span class=""fco-gnn"">' + (i + 1) + '</span>' +
+        esc(GSECTIONS[i][1]) + '</div>';
     }
-    function step(n, text) {
-      return '<div class=""fco-step""><div class=""fco-num"">' + n + '</div><div>' +
-        text + '</div></div>';
-    }
-
-    var h = '<div class=""fco-gd"">' +
-      '<div class=""fco-gd-h""><div class=""fco-gd-t"">Financial Crime Monitoring</div>' +
-      '<div class=""fco-gd-s"">report guide</div></div>' +
-      '<div class=""fco-lede"">A transaction monitoring pack over ' +
-      full(m.txns || 0) + ' payments. Every page is a single HTML visual driven by ' +
-      'one DAX measure: the measure ships aggregated data, the browser does layout, ' +
-      'ranking and filtering. Clicking inside a page never queries the model again.' +
-      '</div><div class=""fco-cols"">';
-
-    h += sec('The pages',
-      '<div class=""fco-steps"">' +
-      step(1, '<b>Overview.</b> Alert volume and value over time, by channel, risk ' +
-              'band and transaction type. Start here.') +
-      step(2, '<b>Rule effectiveness.</b> Which rules fire, how often they overlap, ' +
-              'and what an alert threshold costs in analyst headcount.') +
-      step(3, '<b>Risk and exposure.</b> Where risk concentrates: score spread, ' +
-              'card-not-present, cross-border and entry mode.') +
-      '</div>');
-
-    h += sec('How filtering works',
-      '<p>The chips at the top of each page filter <b>inside the browser</b>. ' +
-      'They are instant and never hit the model.</p>' +
-      '<p>Power BI report filters still apply, because the measure is evaluated in ' +
-      'filter context. What a page cannot do is filter <b>out</b> to other visuals: ' +
-      'an HTML visual receives filter context but cannot emit it.</p>' +
-      '<p>That is why each page is one visual. If the page is the visual, there is ' +
-      'nothing to cross-filter to.</p>');
-
-    h += sec('What an alert means here',
-      '<p>A <b>rule firing</b> contributes to a risk score. An <b>alert</b> is that ' +
-      'score crossing into the HIGH band. They are not the same thing, and ' +
-      'conflating them is the easiest way to get this wrong.</p>' +
-      '<p>Treating any firing as an alert gives an 80% alert rate, roughly 317 ' +
-      'full-time analysts. Scoring properly gives <b>' + pct(m.alertRate || 0) +
-      '</b>, about ' + esc((m.analystYears || 0).toFixed(1)) + ' analyst-years.</p>');
-
-    h += '</div><div class=""fco-cols"" style=""margin-top:14px"">';
-
-    h += sec('Where the data comes from',
-      '<p>PostgreSQL on-premises, mirrored into OneLake by open mirroring, cleaned ' +
-      'and conformed with DuckDB, served as a Direct Lake semantic model.</p>' +
-      '<dl class=""fco-kv2"">' +
-      '<dt>Transactions</dt><dd>' + full(m.txns || 0) + '</dd>' +
-      '<dt>Customers</dt><dd>' + full(m.customers || 0) + '</dd>' +
-      '<dt>Rule firings</dt><dd>' + full(m.firings || 0) + '</dd>' +
-      '<dt>Months covered</dt><dd>' + esc(m.months || 0) + '</dd>' +
-      '<dt>Total value</dt><dd>' + money(m.amt || 0) + '</dd>' +
-      '</dl>');
-
-    h += sec('Reading the numbers',
-      '<p><b>Amounts</b> cross from DAX as integer sen and are divided in the ' +
-      'browser, so a locale that writes 1.234,56 cannot corrupt the payload.</p>' +
-      '<p><b>Approval rate</b> divides by transactions that received a decision, not ' +
-      'by all of them. ' + full(m.undecided || 0) + ' never got one.</p>' +
-      '<p><b>Counts</b> are exact, not sampled, and reconcile to the model measures ' +
-      'to the cent.</p>');
-
-    h += sec('Known limits',
-      '<p>Each page ships a cube at a fixed grain, so you can slice on the ' +
-      'dimensions shown and no others. Merchant has 250,004 members and belongs on a ' +
-      'page that ships a merchant cube.</p>' +
-      '<p>Export data returns markup rather than rows, and the visual is ' +
-      'uncertified, so PDF and PowerPoint export are unavailable.</p>');
-
-    h += '</div>';
-
-    h += '<div class=""fco-warn""><h3>Synthetic data</h3>' +
-      '<p>Every figure here is generated, not real. The mess is deliberate: five ' +
-      'competing date formats, 32 spellings of one country, ' +
-      full(m.dupes || 593209) + ' exact duplicate rows. Dates that never parsed sit ' +
-      'in an <b>Unknown</b> bucket rather than being dropped, which is why it shows ' +
-      'on the Overview trend.</p></div>';
-
     return h + '</div>';
   }
+
+  /* Alerts above a cut-off, straight off the histogram. A tail sum is all a
+   * threshold ever is, which is why this needs no round trip. */
+  function alertsAbove(cut) {
+    var hist = D.hist || [], n = 0;
+    for (var i = 0; i < hist.length; i += 2) {
+      if (hist[i] >= cut) n += hist[i + 1];
+    }
+    return n;
+  }
+
+  function gThresholdDemo() {
+    var m = D.meta || {};
+    var lo = 10, hi = Math.min(100, m.maxScore || 145);
+    var cur = S.gthr == null ? (m.threshold || 60) : S.gthr;
+    var al = alertsAbove(cur);
+    var rate = m.txns ? al / m.txns : 0;
+    var years = al / 50000;
+    var fte = years / 2.5;
+    var isDefault = (cur === (m.threshold || 60));
+
+    var h = '<div class=""fco-demo"">' +
+      '<div class=""fco-demo-h"">Move the cut-off and watch what it costs</div>' +
+      '<div class=""fco-chips"">';
+    for (var c = lo; c <= hi; c += 10) {
+      h += '<span class=""fco-chip' + (c === cur ? ' on' : '') +
+        '"" data-k=""gthr"" data-v=""' + c + '"">' + c + '</span>';
+    }
+    h += '</div><div class=""fco-demo-out"">' +
+      '<div class=""fco-do""><div class=""fco-dol"">Alerts raised</div>' +
+      '<div class=""fco-dov"">' + full(al) + '</div></div>' +
+      '<div class=""fco-do""><div class=""fco-dol"">Alert rate</div>' +
+      '<div class=""fco-dov"">' + pct(rate, 2) + '</div></div>' +
+      '<div class=""fco-do""><div class=""fco-dol"">Analyst years</div>' +
+      '<div class=""fco-dov"">' + years.toFixed(1) + '</div></div>' +
+      '<div class=""fco-do lead""><div class=""fco-dol"">Analysts needed</div>' +
+      '<div class=""fco-dov"">' + fte.toFixed(0) + '</div></div>' +
+      '</div>';
+
+    // The distribution, with the chosen cut-off marked.
+    var hist = D.hist || [], maxH = 0, i;
+    for (i = 0; i < hist.length; i += 2) { if (hist[i + 1] > maxH) maxH = hist[i + 1]; }
+    h += '<div class=""fco-demo-hist"">';
+    for (i = 0; i < hist.length; i += 2) {
+      var bk = hist[i];
+      var ph = maxH ? (hist[i + 1] / maxH) * 100 : 0;
+      h += '<div class=""fco-dhb"" title=""score ' + bk + ' to ' + (bk + 4) + ': ' +
+        full(hist[i + 1]) + '""><div class=""fco-dhf' + (bk >= cur ? ' on' : '') +
+        '"" style=""height:' + ph.toFixed(2) + '%""></div></div>';
+    }
+    h += '</div><div class=""fco-demo-ax""><span>score 0</span><span>' +
+      (hist.length ? hist[hist.length - 2] + 4 : 145) + '</span></div>';
+
+    h += '<div class=""fco-note"">' +
+      (isDefault
+        ? 'This is the threshold the model actually uses: the HIGH band starts ' +
+          'at <b>' + cur + '</b>.'
+        : 'The model uses <b>' + (m.threshold || 60) + '</b>. At <b>' + cur +
+          '</b> the queue would be ' +
+          (al > (m.alerts || 0) ? 'larger' : 'smaller') + ', needing ' +
+          fte.toFixed(0) + ' analysts instead of ' +
+          ((m.alerts || 0) / 50000 / 2.5).toFixed(0) + '.') +
+      '</div></div>';
+    return h;
+  }
+
+  function gFiringVsAlert() {
+    var m = D.meta || {};
+    var wr = m.txnsWithRule || 0, al = m.alerts || 0, tx = m.txns || 1;
+    var wrPct = wr / tx, alPct = al / tx;
+    return '<div class=""fco-compare"">' +
+      '<div class=""fco-cmp"">' +
+      '<div class=""fco-cmp-t"">If any rule firing were an alert</div>' +
+      '<div class=""fco-cmp-bar""><div class=""fco-cmp-f bad"" style=""width:' +
+      (wrPct * 100).toFixed(1) + '%""></div></div>' +
+      '<div class=""fco-cmp-v"">' + full(wr) + ' <span>' + pct(wrPct, 1) +
+      ' of transactions</span></div>' +
+      '<div class=""fco-cmp-n"">About ' + Math.round(wr / 50000 / 2.5) +
+      ' full-time analysts. Nobody staffs that, so in practice the queue is ' +
+      'ignored and the control stops working.</div></div>' +
+      '<div class=""fco-cmp"">' +
+      '<div class=""fco-cmp-t"">Scoring, then alerting on the score</div>' +
+      '<div class=""fco-cmp-bar""><div class=""fco-cmp-f good"" style=""width:' +
+      Math.max(alPct * 100, 0.6).toFixed(1) + '%""></div></div>' +
+      '<div class=""fco-cmp-v"">' + full(al) + ' <span>' + pct(alPct, 2) +
+      ' of transactions</span></div>' +
+      '<div class=""fco-cmp-n"">About ' + Math.round(al / 50000 / 2.5) +
+      ' analysts. A queue this size can actually be worked, which is the only ' +
+      'reason the numbers on the other pages mean anything.</div></div></div>';
+  }
+
+  function gSection(id) {
+    var m = D.meta || {};
+    var h = '';
+
+    if (id === 'start') {
+      h += '<p class=""fco-lede"">This pack monitors <b>' + full(m.txns || 0) +
+        '</b> card and account transactions for financial crime, across <b>' +
+        esc(m.months || 0) + ' months</b> from ' + esc(m.minYr || '') + ' to ' +
+        esc(m.maxYr || '') + '. It exists to answer one operational question: ' +
+        'which transactions should a human look at today, and can the team ' +
+        'actually work that many.</p>';
+      h += '<div class=""fco-stats"">' +
+        gstat(full(m.txns || 0), 'transactions') +
+        gstat(full(m.customers || 0), 'customers') +
+        gstat(full(m.alerts || 0), 'alerts raised') +
+        gstat(esc(m.nRules || 0), 'scoring rules') +
+        gstat(money(m.amt || 0), 'total value') +
+        gstat(pct(m.txns ? (m.alerts || 0) / m.txns : 0), 'alert rate') +
+        '</div>';
+      h += '<div class=""fco-sec""><h3>What makes this report unusual</h3>' +
+        '<p>Every page is a <b>single visual</b>. Not a canvas of twenty ' +
+        'visuals: one HTML visual filling the page, drawn by JavaScript from ' +
+        'data one DAX measure hands it.</p>' +
+        '<p>That sounds like a stunt and is not. A custom visual cannot ' +
+        'cross-filter its neighbours unless its own compiled code builds ' +
+        'selection identities, which this one does not. Rather than fight that, ' +
+        'the page <i>is</i> the visual, so there is nothing to cross-filter to. ' +
+        'Every click re-aggregates in the browser in under a millisecond and ' +
+        'never touches the model.</p>' +
+        '<p>Open <b>How the data gets here</b> next, or jump to ' +
+        '<b>Firing vs alert</b> for the one idea that matters most.</p></div>';
+      return h;
+    }
+
+    if (id === 'pipeline') {
+      h += '<p class=""fco-lede"">Five stages, each deliberately constrained so ' +
+        'the next one has something honest to do. Select a stage.</p>';
+      h += '<div class=""fco-pipe"">';
+      var cur = S.gstage == null ? 0 : S.gstage;
+      for (var i = 0; i < GSTAGES.length; i++) {
+        h += '<div class=""fco-stage' + (i === cur ? ' on' : '') +
+          '"" data-k=""gstage"" data-v=""' + i + '"">' +
+          '<div class=""fco-stage-n"">' + (i + 1) + '</div>' +
+          '<div class=""fco-stage-t"">' + esc(GSTAGES[i][0]) + '</div>' +
+          '<div class=""fco-stage-s"">' + esc(GSTAGES[i][1]) + '</div></div>';
+        if (i < GSTAGES.length - 1) h += '<div class=""fco-arrow"">&rsaquo;</div>';
+      }
+      h += '</div>';
+      var st = GSTAGES[S.gstage == null ? 0 : S.gstage];
+      h += '<div class=""fco-sec""><h3>' + esc(st[0]) + ' ' + DOT + ' ' +
+        esc(st[1]) + '</h3><p>' + st[2] + '</p></div>';
+      h += '<div class=""fco-sec""><h3>Why the measure ships a cube</h3>' +
+        '<p>A DAX measure holds roughly <b>2,100,000 characters</b>. Shipping ' +
+        full(m.txns || 0) + ' rows at grain would need about <b>1.7 billion</b>, ' +
+        'roughly 800 times over.</p>' +
+        '<p>So each measure aggregates first and ships a small cube: the ' +
+        'Overview uses month x channel x risk band x transaction type, 2,508 ' +
+        'populated cells, about 4% of the ceiling. The browser re-aggregates ' +
+        'that cube on every click. The trade is explicit: you can slice on the ' +
+        'dimensions a page ships and no others.</p></div>';
+      return h;
+    }
+
+    if (id === 'alerts') {
+      h += '<p class=""fco-lede"">This is the one idea worth reading twice. A ' +
+        '<b>rule firing</b> contributes points to a transaction risk score. An ' +
+        '<b>alert</b> is that score crossing a threshold. Treating the two as ' +
+        'the same thing is the most common way a monitoring programme quietly ' +
+        'stops working.</p>';
+      h += gFiringVsAlert();
+      h += gThresholdDemo();
+      return h;
+    }
+
+    if (id === 'pages') {
+      h += '<p class=""fco-lede"">Three analytics pages, each shipping its own ' +
+        'cube at the grain its questions need.</p>';
+      h += '<div class=""fco-cols2"">';
+      h += '<div class=""fco-sec""><h3>Overview</h3>' +
+        '<p>Alert volume and value over time, by channel, risk band and ' +
+        'transaction type. Chips filter all four dimensions at once, and ' +
+        'clicking a month bar filters to it. Start here.</p>' +
+        '<p class=""fco-dim"">Cube: month x channel x band x type</p></div>';
+      h += '<div class=""fco-sec""><h3>Rule effectiveness</h3>' +
+        '<p>Which rules fire and how often, how many fire together on one ' +
+        'transaction, the full score distribution, and a table pricing each ' +
+        'cut-off in analyst headcount.</p>' +
+        '<p class=""fco-dim"">Cubes: rules, rules-fired x band, score histogram</p>' +
+        '</div>';
+      h += '<div class=""fco-sec""><h3>Risk and exposure</h3>' +
+        '<p>Where risk concentrates: merchant category, settlement currency, ' +
+        'card brand and entry mode, each stacked by risk band, with ' +
+        'card-not-present, cross-border and odd-hour headlines.</p>' +
+        '<p class=""fco-dim"">Cubes: four dimension x band grids</p></div>';
+      h += '</div>';
+      h += '<div class=""fco-sec""><h3>How filtering behaves</h3>' +
+        '<p>The chips at the top of a page filter <b>inside the browser</b>. ' +
+        'They are instant and never hit the model.</p>' +
+        '<p>Power BI report and page filters still apply, because the measure ' +
+        'is evaluated in filter context. What a page cannot do is filter ' +
+        '<b>out</b> to other visuals: an HTML visual receives filter context but ' +
+        'cannot emit it. Use the page tabs to move between pages.</p></div>';
+      return h;
+    }
+
+    if (id === 'numbers') {
+      h += '<p class=""fco-lede"">Four conventions worth knowing before you quote ' +
+        'anything off these pages.</p>';
+      h += '<div class=""fco-cols2"">';
+      h += '<div class=""fco-sec""><h3>Money crosses as integers</h3>' +
+        '<p>Amounts leave DAX as <b>integer sen</b> and are divided by 100 in ' +
+        'the browser. <code>FORMAT(x, ""0"")</code> emits no digit separator in ' +
+        'any locale, so a workspace that writes <code>1.234,56</code> cannot ' +
+        'silently corrupt the payload into invalid JavaScript.</p></div>';
+      h += '<div class=""fco-sec""><h3>Denominators differ on purpose</h3>' +
+        '<p><b>Approval rate</b> and <b>decline rate</b> divide by the <b>' +
+        full(m.decided || 0) + '</b> transactions that received an ' +
+        'authorisation decision, not by all ' + full(m.txns || 0) + '. The ' +
+        'other <b>' + full(m.undecided || 0) + '</b> never got one, and ' +
+        'including them understates approval by about seven points.</p></div>';
+      h += '<div class=""fco-sec""><h3>Counts are exact</h3>' +
+        '<p>Nothing here is sampled or estimated. Every figure reconciles to ' +
+        'the model measures to the cent, and the build refuses to ship if the ' +
+        'cube and the model disagree on a single cell.</p></div>';
+      h += '<div class=""fco-sec""><h3>Headcount is an assumption</h3>' +
+        '<p>Analyst counts assume <b>50,000 alerts cleared per analyst-year</b> ' +
+        'across ' + esc(m.months || 0) + ' months. That figure is a planning ' +
+        'rule of thumb, not a measurement. Change it and every headcount on ' +
+        'these pages moves proportionally.</p></div>';
+      h += '</div>';
+      return h;
+    }
+
+    if (id === 'quality') {
+      h += '<p class=""fco-lede"">The source is deliberately ungoverned, and the ' +
+        'report shows what survived rather than hiding it. This is the part ' +
+        'most demos quietly skip.</p>';
+      h += '<div class=""fco-cols2"">';
+      h += '<div class=""fco-sec""><h3>What the source looked like</h3>' +
+        '<p>100 columns, all text. Five competing date formats in one column, ' +
+        'sentinel dates like <code>9999-12-31</code>, money as ' +
+        '<code>1,234.50</code> and <code>(45.00)</code> and ' +
+        '<code>RM99.00</code>, null written eight different ways, and <b>' +
+        full(m.dupes || 0) + '</b> exact duplicate rows.</p></div>';
+      h += '<div class=""fco-sec""><h3>What cleaning recovered</h3>' +
+        '<p>Posting dates went from <b>47.5%</b> parseable to <b>93.0%</b>. ' +
+        'Country collapsed from 32 spellings to one code, KYC status from 11 ' +
+        'variants to 5, card brand from 44 to 5.</p></div>';
+      h += '<div class=""fco-sec""><h3>What did not survive</h3>' +
+        '<p><b>' + full(m.unknownDates || 0) + '</b> transactions have a date ' +
+        'that never parsed. They sit in an <b>Unknown</b> bucket on the Overview ' +
+        'trend rather than being dropped. A monitoring page that silently loses ' +
+        'transactions is worse than one that admits to them.</p></div>';
+      h += '<div class=""fco-sec""><h3>Mess you can still see</h3>' +
+        '<p>Currency holds both <code>MYR</code> and <code>RM</code> for the ' +
+        'same currency, plus <code>NA</code>, <code>#N/A</code> and a numeric ' +
+        '<code>458</code>. Risk and exposure treats both ringgit spellings as ' +
+        'domestic and reports the unresolvable values separately instead of ' +
+        'folding them into a headline.</p></div>';
+      h += '</div>';
+      return h;
+    }
+
+    // limits
+    h += '<p class=""fco-lede"">Stated plainly, because a technique that hides ' +
+      'its costs is being sold rather than explained.</p>';
+    h += '<div class=""fco-cols2"">';
+    h += '<div class=""fco-sec""><h3>Fixed slicing grain</h3>' +
+      '<p>Each page ships a cube at one grain, so you can slice on the ' +
+      'dimensions shown and no others. Merchant has <b>250,004</b> members: ' +
+      'shipping it would blow the ceiling for a panel nobody could read, so ' +
+      'merchant category is the grain instead.</p></div>';
+    h += '<div class=""fco-sec""><h3>No cross-filtering out</h3>' +
+      '<p>A page receives filter context but cannot emit it. Clicking a bar ' +
+      'here will never drive a visual elsewhere. If that is a requirement, ' +
+      'Deneb binds real model fields and implements selection, at the cost of ' +
+      'Vega-Lite grammar.</p></div>';
+    h += '<div class=""fco-sec""><h3>Export returns markup</h3>' +
+      '<p>Export data gives you the HTML the measure produced, not rows. The ' +
+      'visual is uncertified, which also rules out PDF and PowerPoint export. ' +
+      'Certification requires no external loading, so it is incompatible with ' +
+      'the technique rather than merely absent.</p></div>';
+    h += '<div class=""fco-sec""><h3>Synthetic data</h3>' +
+      '<p>Every figure in this pack is generated. The volumes, the mess and ' +
+      'the pipeline are real engineering; the transactions are not. No ' +
+      'conclusion here describes a real institution.</p></div>';
+    h += '</div>';
+    return h;
+  }
+
+  function gstat(v, l) {
+    return '<div class=""fco-stat""><div class=""fco-stat-v"">' + v +
+      '</div><div class=""fco-stat-l"">' + esc(l) + '</div></div>';
+  }
+
+  function renderGuide() {
+    var cur = S.gsec || 'start';
+    var title = 'Start here';
+    for (var i = 0; i < GSECTIONS.length; i++) {
+      if (GSECTIONS[i][0] === cur) title = GSECTIONS[i][1];
+    }
+    return '<div class=""fco-hd"">' +
+      '<div class=""fco-ttl"">Financial Crime Monitoring</div>' +
+      '<div class=""fco-sub"">report guide</div>' +
+      '<div class=""fco-spacer""></div>' +
+      '<div class=""fco-scope"">' + esc(title) + '</div></div>' +
+      '<div class=""fco-gwrap"">' + gnav() +
+      '<div class=""fco-gbody"">' + gSection(cur) + '</div></div>';
+  }
+
 
   function kpi(label, value, note) {
     return '<div class=""fco-k""><div class=""fco-kl"">' + esc(label) + '</div>' +
@@ -1096,6 +1464,20 @@ VAR Lib = "(function () {
 
       if (k === 'reset') {
         S.ch = {}; S.bd = {}; S.tp = {}; S.m0 = S.m1 = null;
+        // deliberately leaves gsec/gstage/gthr alone: clearing data
+        // filters should not throw the reader out of the guide.
+        return schedule();
+      }
+      if (k === 'gsec') {
+        S.gsec = el.getAttribute('data-v');
+        return schedule();
+      }
+      if (k === 'gstage') {
+        S.gstage = parseInt(el.getAttribute('data-v'), 10);
+        return schedule();
+      }
+      if (k === 'gthr') {
+        S.gthr = parseInt(el.getAttribute('data-v'), 10);
         return schedule();
       }
       if (k === 'ch' || k === 'bd' || k === 'tp') {

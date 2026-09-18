@@ -1,39 +1,113 @@
 // ============================================================================
 // Financial Crime - report guide
 // ----------------------------------------------------------------------------
-// The lightest measure in the pack. The guide explains the report rather than
-// querying it, so it ships a handful of headline figures and nothing else.
+// The guide explains the report rather than reporting on it, but it is not a
+// static page. It ships three small things so the explanations can be
+// demonstrated instead of asserted:
 //
-// Those figures are still live: quoting a stale row count in a guide is how a
-// report starts lying about itself.
+//   hist   risk score bucketed by 5      30 rows
+//   fired  rules_fired x band            8 x 3
+//   meta   headline figures
+//
+// `hist` is what makes the threshold demonstrator work. Dragging the cut-off
+// recomputes alert volume and analyst headcount in the browser as a tail sum,
+// so a reader can see for themselves that the choice of threshold is a staffing
+// decision. Explaining that in prose never lands the same way.
+//
+// `fired` backs the firing-versus-alert comparison: how many transactions have
+// a rule fire at all, against how many actually cross into the HIGH band.
+//
+// Quoting a stale row count in a guide is how a report starts lying about
+// itself, so every figure here is live.
 // ============================================================================
 
 Guide =
+VAR BandsIdx =
+    SELECTCOLUMNS (
+        { ( "LOW", 0 ), ( "MEDIUM", 1 ), ( "HIGH", 2 ) },
+        "lbl", [Value1],
+        "idx", [Value2]
+    )
+
+VAR HistRows =
+    ADDCOLUMNS (
+        SUMMARIZE ( fact_transaction, fact_transaction[risk_score] ),
+        "bkt", INT ( COALESCE ( fact_transaction[risk_score], 0 ) / 5 ) * 5,
+        "txns", [Transactions]
+    )
+VAR HistGrouped =
+    GROUPBY ( HistRows, [bkt], "n", SUMX ( CURRENTGROUP (), [txns] ) )
+VAR HistJs =
+    CONCATENATEX (
+        HistGrouped,
+        FORMAT ( [bkt], "0" ) & "," & FORMAT ( COALESCE ( [n], 0 ), "0" ),
+        ",", [bkt], ASC
+    )
+
+VAR FiredRows =
+    ADDCOLUMNS (
+        SUMMARIZE ( fact_transaction,
+                    fact_transaction[rules_fired], fact_transaction[risk_band] ),
+        "txns", [Transactions]
+    )
+VAR FiredJs =
+    CONCATENATEX (
+        FILTER ( FiredRows, [txns] > 0 ),
+        VAR _bl = COALESCE ( fact_transaction[risk_band], "(blank)" )
+        VAR _bi = MAXX ( FILTER ( BandsIdx, [lbl] = _bl ), [idx] )
+        RETURN
+            FORMAT ( COALESCE ( fact_transaction[rules_fired], 0 ), "0" ) & ","
+                & FORMAT ( COALESCE ( _bi, 0 ), "0" ) & ","
+                & FORMAT ( [txns], "0" ),
+        ","
+    )
+
 VAR TotTxns = CALCULATE ( [Transactions], ALLSELECTED () )
 VAR TotAmt = CALCULATE ( ROUND ( [Total Amount] * 100, 0 ), ALLSELECTED () )
 VAR TotAlerts = CALCULATE ( [Alerts Raised], ALLSELECTED () )
 VAR TotCust = CALCULATE ( [Distinct Customers], ALLSELECTED () )
 VAR TotFire = CALCULATE ( [Rule Firings], ALLSELECTED () )
+VAR TotWithRule = CALCULATE ( [Transactions With Any Rule], ALLSELECTED () )
 VAR TotDec =
-    CALCULATE ( [Transactions], ALLSELECTED (), NOT ISBLANK ( fact_transaction[auth_approved] ) )
-VAR Undecided = TotTxns - TotDec
+    CALCULATE ( [Transactions], ALLSELECTED (),
+                NOT ISBLANK ( fact_transaction[auth_approved] ) )
 VAR Months =
     CALCULATE ( COUNTROWS ( SUMMARIZE ( ALL ( dim_date ), dim_date[yr], dim_date[mth] ) ) )
-VAR AlertRate = DIVIDE ( TotAlerts, TotTxns )
+VAR MinYr = CALCULATE ( MIN ( dim_date[yr] ), ALL ( dim_date ) )
+VAR MaxYr = CALCULATE ( MAX ( dim_date[yr] ), ALL ( dim_date ) )
+VAR Threshold =
+    CALCULATE ( MIN ( fact_transaction[risk_score] ), ALLSELECTED (),
+                fact_transaction[risk_band] = "HIGH" )
+VAR MedThreshold =
+    CALCULATE ( MIN ( fact_transaction[risk_score] ), ALLSELECTED (),
+                fact_transaction[risk_band] = "MEDIUM" )
+VAR MaxScore = CALCULATE ( MAX ( fact_transaction[risk_score] ), ALLSELECTED () )
+VAR NRules = CALCULATE ( COUNTROWS ( SUMMARIZE ( fact_alert, dim_risk_rule[rule_id] ) ) )
+VAR UnknownDates =
+    CALCULATE ( [Transactions], ALLSELECTED (), ISBLANK ( dim_date[yr] ) )
 
 VAR Payload =
     "window.__fcData={page:'guide',currency:'RM',dim:{bands:['LOW','MEDIUM','HIGH']},"
+        & "hist:[" & HistJs & "],"
+        & "fired:[" & FiredJs & "],"
         & "meta:{"
             & "txns:" & FORMAT ( COALESCE ( TotTxns, 0 ), "0" )
             & ",amt:" & FORMAT ( COALESCE ( TotAmt, 0 ), "0" )
             & ",alerts:" & FORMAT ( COALESCE ( TotAlerts, 0 ), "0" )
             & ",customers:" & FORMAT ( COALESCE ( TotCust, 0 ), "0" )
             & ",firings:" & FORMAT ( COALESCE ( TotFire, 0 ), "0" )
-            & ",undecided:" & FORMAT ( COALESCE ( Undecided, 0 ), "0" )
+            & ",txnsWithRule:" & FORMAT ( COALESCE ( TotWithRule, 0 ), "0" )
+            & ",decided:" & FORMAT ( COALESCE ( TotDec, 0 ), "0" )
+            & ",undecided:" & FORMAT ( COALESCE ( TotTxns - TotDec, 0 ), "0" )
             & ",months:" & FORMAT ( COALESCE ( Months, 0 ), "0" )
+            & ",minYr:" & FORMAT ( COALESCE ( MinYr, 0 ), "0" )
+            & ",maxYr:" & FORMAT ( COALESCE ( MaxYr, 0 ), "0" )
+            & ",threshold:" & FORMAT ( COALESCE ( Threshold, 60 ), "0" )
+            & ",medThreshold:" & FORMAT ( COALESCE ( MedThreshold, 30 ), "0" )
+            & ",maxScore:" & FORMAT ( COALESCE ( MaxScore, 145 ), "0" )
+            & ",nRules:" & FORMAT ( COALESCE ( NRules, 0 ), "0" )
+            & ",unknownDates:" & FORMAT ( COALESCE ( UnknownDates, 0 ), "0" )
             & ",dupes:593209"
-            & ",alertRate:" & FORMAT ( COALESCE ( AlertRate, 0 ), "0.00000" )
-            & ",analystYears:" & FORMAT ( DIVIDE ( TotAlerts, 50000 ), "0.0" )
         & "}};"
 
 RETURN
