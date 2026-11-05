@@ -2,7 +2,7 @@
  * Inspired Closets Chicago - "KPI Overview" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.2.0/icch/icch-kpi.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.3.0/icch/icch-kpi.js
  * License : MIT
  *
  * Fourteen KPI tiles, NO goal framework (ICCH has not set goals): each tile
@@ -98,6 +98,11 @@
       ';border-radius:8px;font-size:11px;color:', T.sec, ';line-height:1.65}',
     '.ick-notes b{color:', T.ink, '}',
     '@media(max-width:900px){.ick-grid{grid-template-columns:repeat(2,1fr)}}',
+    /* medium: four sections below ~1040px - drop the prior/current bars, tighten spacing */
+    '@media(max-height:1039px){.ick-bars{display:none}.ick-tile{padding:10px 13px;gap:4px}.ick-sec{margin-bottom:10px}',
+      '.ick-sechead{margin-bottom:6px}.ick-grid{gap:10px}.ick-head{padding-bottom:10px;margin-bottom:12px}',
+      '.ick-notes{padding:8px 12px;font-size:10.5px;line-height:1.5}',
+      '.ick-value{font-size:clamp(18px,2.9vh,26px)}.ick-hero .ick-value{font-size:clamp(22px,3.6vh,34px)}}',
     /* compact mode for short iframes: chip already carries the delta */
     '@media(max-height:759px){.ick-bars{display:none}.ick-spark{min-height:14px;max-height:26px}.ick-trend{display:none}',
       '.ick-tile{padding:9px 12px;gap:3px}.ick-foot{min-height:18px}',
@@ -117,6 +122,7 @@
   function num(n) { return Number(n).toLocaleString('en-US'); }
 
   function chipFor(cur, pri, kind) {
+    if (kind === 'none') return '';
     if (kind === 'nocmp') {
       return '<span class="ick-chip" style="color:' + T.naTx + ';background:' + T.naTk + '">no comparison</span>';
     }
@@ -182,13 +188,14 @@
       if (t.fmt === 'dec') return v.toFixed(1);
       return num(v);
     };
-    var prevTxt = t.chipKind === 'nocmp' ? (t.noCmpText || 'no comparable prior data')
+    var prevTxt = t.chipKind === 'none' ? (t.note || '')
+      : t.chipKind === 'nocmp' ? (t.noCmpText || 'no comparable prior data')
       : t.pri == null ? 'no prior data' : (t.priLabel || 'prior') + ': <b>' + show(t.pri) + '</b>';
     var barCur = t.fmt === 'pct' || t.fmt === 'dec' ? (t.cur || 0) * 1000 : (t.cur || 0);
     var barPri = t.fmt === 'pct' || t.fmt === 'dec' ? (t.pri || 0) * 1000 : (t.pri || 0);
     var ico = t.icon ? '<span class="ick-ico">' + ICONS[t.icon] + '</span>' : '';
     var hasS = !!t.series;
-    var mid = hasS ? spark(t.series) : bars(barCur, barPri);
+    var mid = hasS ? spark(t.series) : t.chipKind === 'none' ? '<div style="flex:1"></div>' : bars(barCur, barPri);
     return '<div class="ick-tile' + (t.hero ? ' ick-hero' : '') + '"' +
       (t.titleAttr ? ' title="' + t.titleAttr + '"' : '') + '>' +
       '<div class="ick-label"><span>' + t.label + '</span>' + ico + '</div>' +
@@ -248,13 +255,28 @@
         sub: num(c.faW || 0) + ' of ' + num(c.leadsW || 0) + ' leads · partial week' }
     ]);
 
+    var cm = d.cm || {};
+    var community = section('Salesforce Community dashboard', 'Same definitions as Chicago\u2019s Community dashboard, company-wide', [
+      { label: 'Pending project value', fmt: 'money', cur: cm.pendV, chipKind: 'none', icon: 'tag',
+        note: 'All open projects in Design or Propose', sub: num(cm.pendN || 0) + ' projects', titleAttr: moneyFull(cm.pendV || 0) },
+      { label: 'Installed, 100% complete', fmt: 'money', cur: cm.instV, chipKind: 'none', icon: 'receipt',
+        note: 'Completed in the last 24 months', sub: num(cm.instN || 0) + ' projects', titleAttr: moneyFull(cm.instV || 0) },
+      { label: 'Average order value', fmt: 'money', cur: cm.aovN ? Math.round(cm.aovV / cm.aovN) : null, chipKind: 'none', icon: 'dollar',
+        note: 'Ready to order in the last 16 weeks', sub: num(cm.aovN || 0) + ' orders, ' + money(cm.aovV || 0) },
+      { label: 'Avg $ sold per initial consultation', fmt: 'money', cur: cm.apcD ? Math.round(cm.apcV / cm.apcD) : null, chipKind: 'none', icon: 'cal',
+        note: 'Orders in the last 3 months', sub: money(cm.apcV || 0) + ' \u00f7 ' + num(cm.apcD || 0) + ' first appts (12 mo)',
+        titleAttr: cm.apcD ? moneyFull(Math.round(cm.apcV / cm.apcD * 100) / 100 * 100) : '' },
+      { label: 'Closing % (last 120 days)', fmt: 'pct', cur: cm.c120C ? cm.c120S / cm.c120C : null, chipKind: 'none', icon: 'pct',
+        note: 'Sold by sold date \u00f7 created', sub: num(cm.c120S || 0) + ' sold \u00f7 ' + num(cm.c120C || 0) + ' created' }
+    ]);
+
     return '<div class="ick-head"><div>' +
       '<div class="ick-eyebrow">Inspired Closets · Chicago</div>' +
       '<div class="ick-title">KPI Overview <span>· current vs prior period</span></div></div>' +
       '<div class="ick-asof">Data as of <b>' + asofNice + '</b><br>' +
       'Basis: sold date (Salesforce Community standard) · week starts Sunday</div></div>' +
-      year + month + week +
-      '<div class="ick-notes"><b>Definitions.</b> Sold $ and jobs count by Original Project Sold Date, matching the Salesforce Community. ' +
+      year + month + week + community +
+      '<div class="ick-notes"><b>Definitions.</b> Sold $ and jobs count projects Salesforce marks as sold (Ready to Order, Ready to Install, Complete, Incomplete) by Original Project Sold Date, matching the Salesforce Community. ' +
       'Closing % = sold in period ÷ created in period, excluding Dead Lead (Community formula). ' +
       'Average sale = sold $ ÷ jobs sold. Appointments = first appointments; leads and appointments count by their own dates. ' +
       'Every comparison is day-matched (same number of elapsed days). Hover a money value for the exact amount.</div>';
@@ -281,6 +303,6 @@
     });
   }
 
-  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.2.0' };
+  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.3.0' };
   render();
 })();
