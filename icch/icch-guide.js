@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Chicago - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.0/icch/icch-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.1/icch/icch-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__icchGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -82,7 +82,7 @@
         { h: 'Stages' },
         { p: 'Sold, Lost, Proposed and Dead Lead are the stages used on every sales page. Dead Lead means a project that went quiet without being formally lost.' }
       ] },
-      { id: 'colours', title: 'Colours', body: [
+      { id: 'colors', title: 'Colors', body: [
         { swatches: [
           [T.sold, 'Sold', 'Green always means sold.'],
           [T.lost, 'Lost', 'Orange always means lost.'],
@@ -213,6 +213,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.0' };
+  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.1' };
   render();
 })();
