@@ -2,7 +2,7 @@
  * Inspired Closets LA - "2026 Goals" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.0.5/icla/icla-goals.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-goals-v1.1.0/icla/icla-goals.js
  * License : MIT
  *
  * Fourteen goal-vs-actual KPI tiles (Marye Silvers' 2026 goal framework),
@@ -49,29 +49,39 @@
 
   /* ── ICLA report theme tokens (Inspired_Closets_LA theme json) ────────── */
   var T = {
-    ink: '#1A1D2E', sec: '#5C5F77', faint: '#9497AD',
-    line: '#E3E5F0', ground: '#F7F8FB', card: '#FFFFFF',
-    good: '#0FAF8E', goodTk: '#DCF4EE', goodTx: '#0B7A63',
-    warn: '#E8A817', warnTk: '#FBEED2', warnTx: '#8F6606',
-    bad:  '#E8524F', badTk:  '#FBDFDD', badTx:  '#B02F2C'
+    ink: '#282829', sec: '#71645C', faint: '#8F847C',
+    line: '#E4DCD6', ground: '#F3EEEA', card: '#FFFFFF', brand: '#821F2D',
+    good: '#1B7A4E', goodTk: '#DDEFE4', goodTx: '#1B7A4E',
+    warn: '#C98A12', warnTk: '#FBEED2', warnTx: '#7A5206',
+    bad:  '#C2410C', badTk:  '#FDE7DA', badTx:  '#C2410C'
   };
+
+  var TILE = (function () {
+    var st = 'stroke=%22%2371645C%22 stroke-opacity=%220.10%22 stroke-width=%221.2%22 fill=%22none%22';
+    var g = '<rect x=%2210%22 y=%2210%22 width=%22280%22 height=%22420%22 rx=%223%22 ' + st + '/>' +
+      '<line x1=%2210%22 y1=%2256%22 x2=%22290%22 y2=%2256%22 ' + st + '/><line x1=%2218%22 y1=%2288%22 x2=%22282%22 y2=%2288%22 ' + st + '/>';
+    for (var i = 0; i < 7; i++) { var cx = 36 + i * 38; g += '<path d=%22M' + cx + ' 80 q0 -9 6 -9 M' + cx + ' 88 l-16 13 h32 z%22 ' + st + '/>'; }
+    for (var k = 0; k < 4; k++) { var y = 270 + k * 40; g += '<rect x=%2222%22 y=%22' + y + '%22 width=%22256%22 height=%2230%22 rx=%223%22 ' + st + '/>'; }
+    return 'url("data:image/svg+xml,' + '<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22450%22>' + g + '</svg>' + '")';
+  })();
+
 
   var CSS = [
     'html,body{height:100%;margin:0}',
-    '#icg-root{background:', T.ground, ';color:', T.ink,
+    '#icg-root{background:', TILE, ' 0 0/300px 450px repeat,radial-gradient(ellipse at 8% 0%,rgba(154,1,47,.10),rgba(154,1,47,0) 45%),linear-gradient(180deg,#EDE2DE 0%,', T.ground, ' 30%,#F6F2EF 100%);border-top:4px solid ', T.brand, ';color:', T.ink,
       ";font-family:'Segoe UI',system-ui,-apple-system,sans-serif;",
       'padding:22px 24px 16px;height:100%;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}',
     '#icg-root *{box-sizing:border-box}',
     '.icg-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;',
-      'flex-wrap:wrap;border-bottom:3px solid ', T.good, ';padding-bottom:14px;margin-bottom:20px}',
-    '.icg-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:', T.good, ';margin-bottom:2px}',
-    '.icg-title{font-size:24px;font-weight:700;letter-spacing:-.01em}',
+      'flex-wrap:wrap;border-bottom:3px solid ', T.brand, ';padding-bottom:14px;margin-bottom:20px}',
+    '.icg-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:', T.brand, ';margin-bottom:2px}',
+    ".icg-title{font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:400;letter-spacing:-.01em}",
     '.icg-title span{color:', T.faint, ';font-weight:400}',
     '.icg-asof{text-align:right;color:', T.sec, ';font-size:11.5px;line-height:1.5}',
     '.icg-asof b{color:', T.ink, ';font-weight:600}',
     '.icg-sec{margin-bottom:16px;flex:1;display:flex;flex-direction:column;min-height:0}',
     '.icg-sechead{display:flex;align-items:center;gap:9px;margin-bottom:10px}',
-    '.icg-tag{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:', T.good, '}',
+    '.icg-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:', T.brand, '}',
     '.icg-win{font-size:11px;color:', T.faint, '}',
     '.icg-rule{flex:1;height:1px;background:', T.line, '}',
     '.icg-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:1fr;gap:14px;min-height:0}',
@@ -271,6 +281,6 @@
     });
   }
 
-  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.0.5' };
+  window.ICGOALS = { __installed: true, render: render, version: 'icla-goals-v1.1.0' };
   render();
 })();
