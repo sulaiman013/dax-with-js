@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Los Angeles - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-guide-v1.0.0/icla/icla-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-guide-v1.0.1/icla/icla-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__iclaGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -14,7 +14,7 @@
   var G = {
     title: 'Report Guide',
     eyebrow: 'Inspired Closets \u00b7 Los Angeles',
-    intro: 'This report shows how Inspired Closets Los Angeles is selling: where customers come from, how leads turn into appointments and sales, and how each designer is doing. It opens on the <b>Home</b> page. The sales pages show every year by default, with Lead Source and Pipeline counted by the date the project was created.',
+    intro: 'This report shows how Inspired Closets Los Angeles is selling: where customers come from, how leads turn into appointments and sales, and how each designer is doing. It opens on the <b>Home</b> page. Every sales page opens on 2026 and later, with Lead Source and Pipeline counted by the date the project was created.',
     sections: [
       { id: 'pages', title: 'The pages', body: [
         { defs: [
@@ -37,7 +37,7 @@
           '<b>Clear all filters</b> resets every list in the window. <b>Done</b>, the <b>X</b> or a click outside the window closes it, and your choices stay.',
           'The summary line at the top always shows what is selected: the years, dates, designers and sources in use.',
           'On Opportunities and Appointments, your choices carry over between the <b>Overview</b> and <b>Details</b> tabs.',
-          'Every year is shown when a page opens. Tick one or more years in the <b>Year</b> list to narrow it down.'
+          'Year starts on 2026 and later. Tick earlier years in the <b>Year</b> list to look further back.'
         ] }
       ] },
       { id: 'reading', title: 'Reading a page', body: [
@@ -96,7 +96,7 @@
       ] },
       { id: 'included', title: 'What is included and what is left out', body: [
         { list: [
-          'Sales pages show every year by default. Use the <b>Year</b> list to narrow them down.',
+          'Sales pages show 2026 and later by default. Older years are in the <b>Year</b> list.',
           'Projects that were sold and then cancelled are not counted as sold. This matches Salesforce.',
           'Test and practice records are left out.',
           'Designer availability blocks, such as \u201cUnavailable\u201d or \u201cnot available\u201d, are left out of the Appointments pages. Other calendar entries, such as internal meetings or \u201cno appointments\u201d notes, are still counted.',
@@ -117,6 +117,7 @@
       ['Why does sold revenue differ from my Salesforce report?', 'This report counts a project as sold only while its stage is a sold stage. A Salesforce report that uses a different date, or includes cancelled jobs, shows a different total.'],
       ['Why does Goals not match the Lead Source page?', 'Goals always looks at fixed periods (this year, this month and this week) and counts sales by the date they were sold. Lead Source follows the dates you pick and counts by the date the project was created.'],
       ['Why is a lead showing as Scheduled?', 'Scheduled is the Salesforce status for a lead with a booked appointment. It is shown exactly as in Salesforce.'],
+      ['Can I see years before 2026?', 'Yes. Open <b>Filters</b> and tick earlier years in the <b>Year</b> list.'],
       ['How do I see sales by the date they were sold?', 'On Lead Source or Pipeline, click <b>Filter by Sold Date</b> at the top. Click <b>Filter by Created Date</b> to go back.'],
       ['Why do Sold Projects on Appointments not match Pipeline?', 'Appointments counts appointments linked to a sold project, while Pipeline counts each sold project once.'],
       ['Can I export a table?', 'Not from the report on the website: the public version does not allow exporting. If you have a Power BI login, open the report in Power BI, hover over a table, click the three dots at its top right and choose <b>Export data</b>.'],
@@ -173,7 +174,7 @@
     var chips = '<div class="ig-chips">' +
       '<span class="ig-chip">Data updated <b>' + (d && d.updated ? d.updated : 'about every 30 minutes') + '</b></span>' +
       '<span class="ig-chip">Sales counted by <b>created date</b></span>' +
-      '<span class="ig-chip">Opens on <b>all years</b></span>' +
+      '<span class="ig-chip">Opens on <b>2026 and later</b></span>' +
       '<span class="ig-chip">Source <b>Los Angeles Salesforce</b></span></div>';
     var nav = '<nav class="ig-nav">' + G.sections.map(function (s) { return '<a href="#ig-' + s.id + '" data-t="' + s.id + '">' + s.title + '</a>'; }).join('') +
       '<a href="#ig-faq" data-t="faq">' + G.faqTitle + '</a></nav>';
@@ -214,6 +215,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICLAGUIDE = { __installed: true, render: render, version: 'icla-guide-v1.0.0' };
+  window.ICLAGUIDE = { __installed: true, render: render, version: 'icla-guide-v1.0.1' };
   render();
 })();
