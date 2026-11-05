@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Los Angeles - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-guide-v1.0.1/icla/icla-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-guide-v1.0.2/icla/icla-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__iclaGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -19,6 +19,7 @@
       { id: 'pages', title: 'The pages', body: [
         { defs: [
           ['Home', 'The starting point. Click a tile to open a report.'],
+          ['KPI Overview', 'How this year, this month and this week compare with the same days of the last period, plus the same tiles as your Salesforce Community dashboard. Use it for a quick health check.'],
           ['Goals', 'This year\u2019s results against the 2026 goals: fourteen tiles for this year, this month and this week. Each tile shows how far along you are and where you should be by today.'],
           ['Lead Source', 'Revenue by where the customer came from, by stage and by week, with every project listed underneath. Use it to see which sources bring in business.'],
           ['Pipeline', 'Projects week by week, closing % by designer, and the project list. Use it to follow the pipeline and each designer\u2019s results.'],
@@ -48,7 +49,8 @@
           'On the Opportunities and Appointments <b>Overview</b> tabs, right-click a lead source, lead status or project stage and choose <b>Drill through</b> to open the <b>Details</b> tab for just that item.',
           'Click a column heading to sort a table. Long text, such as project notes, wraps onto extra lines.',
           'Maps open on the Los Angeles area. Use the <b>+</b> and <b>\u2212</b> buttons to zoom.',
-          'On <b>Goals</b>, the bar shows how much of the goal is reached and the small marker shows where you should be by today. The chip says whether you are ahead of pace or behind it.'
+          'On <b>Goals</b>, the bar shows how much of the goal is reached and the small marker shows where you should be by today. The chip says whether you are ahead of pace or behind it.',
+          'On <b>KPI Overview</b>, a green <b>Ahead</b> pill means better than the same days of the last period, an orange <b>Behind</b> pill means worse, and a grey <b>Level</b> pill means within one percent.'
         ] }
       ] },
       { id: 'meaning', title: 'What the numbers mean', body: [
@@ -115,13 +117,14 @@
     faqs: [
       ['Why is a page blank?', 'A filter is probably excluding everything. Open <b>Filters</b> and click <b>Clear all filters</b>, or pick a wider date range.'],
       ['Why does sold revenue differ from my Salesforce report?', 'This report counts a project as sold only while its stage is a sold stage. A Salesforce report that uses a different date, or includes cancelled jobs, shows a different total.'],
+      ['Why does the KPI Overview not match the Lead Source page?', 'The KPI Overview always compares fixed periods (this year, this month and this week) and counts sales by the date they were sold. Lead Source follows the dates you pick and counts by the date the project was created.'],
       ['Why does Goals not match the Lead Source page?', 'Goals always looks at fixed periods (this year, this month and this week) and counts sales by the date they were sold. Lead Source follows the dates you pick and counts by the date the project was created.'],
       ['Why is a lead showing as Scheduled?', 'Scheduled is the Salesforce status for a lead with a booked appointment. It is shown exactly as in Salesforce.'],
       ['Can I see years before 2026?', 'Yes. Open <b>Filters</b> and tick earlier years in the <b>Year</b> list.'],
       ['How do I see sales by the date they were sold?', 'On Lead Source or Pipeline, click <b>Filter by Sold Date</b> at the top. Click <b>Filter by Created Date</b> to go back.'],
       ['Why do Sold Projects on Appointments not match Pipeline?', 'Appointments counts appointments linked to a sold project, while Pipeline counts each sold project once.'],
       ['Can I export a table?', 'Not from the report on the website: the public version does not allow exporting. If you have a Power BI login, open the report in Power BI, hover over a table, click the three dots at its top right and choose <b>Export data</b>.'],
-      ['Why can I not filter Goals?', 'Goals always shows fixed periods, so this year can be compared with the 2026 goals on the same days.']
+      ['Why can I not filter Goals or the KPI Overview?', 'Both always show fixed periods, so this year can be compared on the same days with last year and with the 2026 goals.']
     ]
   };
 
@@ -215,6 +218,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICLAGUIDE = { __installed: true, render: render, version: 'icla-guide-v1.0.1' };
+  window.ICLAGUIDE = { __installed: true, render: render, version: 'icla-guide-v1.0.2' };
   render();
 })();
