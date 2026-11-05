@@ -2,7 +2,7 @@
  * Inspired Closets Chicago - "KPI Overview" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.1.0/icch/icch-kpi.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-kpi-v1.2.0/icch/icch-kpi.js
  * License : MIT
  *
  * Fourteen KPI tiles, NO goal framework (ICCH has not set goals): each tile
@@ -74,21 +74,23 @@
     '.ick-tile{background:', T.card, ';border:1px solid ', T.line, ';border-radius:10px;',
       'padding:13px 15px 13px;display:flex;flex-direction:column;gap:6px;min-width:0;overflow:hidden;position:relative}',
     '.ick-hero{grid-column:span 2}',
-    '.ick-label{font-size:11px;font-weight:600;color:', T.sec, ';display:flex;align-items:center;justify-content:space-between;gap:6px}',
+    '.ick-label{flex:none;font-size:11px;font-weight:600;color:', T.sec, ';display:flex;align-items:center;justify-content:space-between;gap:6px}',
     '.ick-ico{flex:none;width:26px;height:26px;border-radius:8px;background:', T.goodTk, ';color:', T.goodTx, ';display:flex;align-items:center;justify-content:center}',
     '.ick-ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}',
-    '.ick-spark{position:absolute;left:15px;right:15px;bottom:36px;height:24px;opacity:.5;pointer-events:none;z-index:0}',
+    '.ick-spark{flex:1 1 0;min-height:18px;max-height:44px;margin-top:2px;opacity:.8;pointer-events:none}',
+    '.ick-trend{flex:none;font-size:9.5px;color:', T.faint, ';letter-spacing:.05em;text-transform:uppercase;margin-top:auto}',
     '.ick-spark svg{width:100%;height:100%;display:block}',
-    '.ick-value{position:relative;z-index:1;margin-top:auto;font-size:clamp(22px,3.4vh,30px);font-weight:600;line-height:1.05;letter-spacing:-.01em;',
+    '.ick-value{flex:none;margin-top:2px;padding-bottom:3px;line-height:1.2;font-size:clamp(20px,3.1vh,28px);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;letter-spacing:-.01em;',
       "font-family:'Segoe UI',system-ui,sans-serif}",
-    '.ick-hero .ick-value{font-size:clamp(30px,5vh,44px);font-weight:700}',
+    '.ick-hero .ick-value{font-size:clamp(26px,4.4vh,40px);font-weight:700}',
     '.ick-value small{font-size:.55em;color:', T.faint, ';font-weight:500}',
-    '.ick-prev{font-size:11px;color:', T.sec, '}',
+    '.ick-prev{flex:none;font-size:11px;color:', T.sec, ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.ick-prev b{color:', T.ink, ';font-weight:600}',
     '.ick-bars{margin-top:auto;display:flex;flex-direction:column;gap:2px}',
     '.ick-bar{position:relative;height:7px;border-radius:4px;background:transparent}',
     '.ick-bar div{position:absolute;top:0;bottom:0;left:0;border-radius:4px;min-width:2px}',
-    '.ick-foot{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:1px;min-height:20px}',
+    '.ick-foot{flex:none;display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:1px;min-height:20px}',
+    '.ick-sub-prev{color:', T.sec, ';font-size:11px}.ick-sub-prev b{color:', T.ink, ';font-weight:600}',
     '.ick-sub{font-size:10.5px;color:', T.faint, ';font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.ick-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;',
       'padding:2px 8px;border-radius:999px;white-space:nowrap;flex:none}',
@@ -97,20 +99,17 @@
     '.ick-notes b{color:', T.ink, '}',
     '@media(max-width:900px){.ick-grid{grid-template-columns:repeat(2,1fr)}}',
     /* compact mode for short iframes: chip already carries the delta */
-    '@media(max-height:759px){.ick-bars,.ick-prev{display:none}.ick-spark{bottom:30px;height:18px}',
+    '@media(max-height:759px){.ick-bars{display:none}.ick-spark{min-height:14px;max-height:26px}.ick-trend{display:none}',
       '.ick-tile{padding:9px 12px;gap:3px}.ick-foot{min-height:18px}',
-      '.ick-value{font-size:clamp(18px,3vh,24px)}',
-      '.ick-hero .ick-value{font-size:clamp(24px,4.2vh,34px)}',
+      '.ick-value{font-size:clamp(17px,2.8vh,23px)}',
+      '.ick-hero .ick-value{font-size:clamp(22px,3.9vh,32px)}',
       '.ick-head{padding-bottom:8px;margin-bottom:10px}.ick-sec{margin-bottom:8px}',
       '.ick-notes{padding:8px 12px;font-size:10px;line-height:1.5}}'
   ].join('');
 
   /* ── formatting ─────────────────────────────────────────────────────────── */
   function money(cents) {
-    var v = cents / 100;
-    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
-    if (v >= 1e4) return '$' + Math.round(v / 1e3) + 'K';
-    return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    return '$' + Math.round(cents / 100).toLocaleString('en-US');
   }
   function moneyFull(cents) {
     return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -118,8 +117,8 @@
   function num(n) { return Number(n).toLocaleString('en-US'); }
 
   function chipFor(cur, pri, kind) {
-    if (kind !== 'pp' && pri != null && pri > 0 && pri < 30 && cur > pri * 5) {
-      return '<span class="ick-chip" style="color:' + T.naTx + ';background:' + T.naTk + '">n/a</span>';
+    if (kind === 'nocmp') {
+      return '<span class="ick-chip" style="color:' + T.naTx + ';background:' + T.naTk + '">no comparison</span>';
     }
     /* kind: 'pct-change' (default) or 'pp' for percent-point metrics */
     var col, glyph, txt;
@@ -183,19 +182,20 @@
       if (t.fmt === 'dec') return v.toFixed(1);
       return num(v);
     };
-    var prevTxt = t.pri == null ? 'no prior data'
-      : 'prior: <b>' + show(t.pri) + '</b>';
+    var prevTxt = t.chipKind === 'nocmp' ? (t.noCmpText || 'no comparable prior data')
+      : t.pri == null ? 'no prior data' : (t.priLabel || 'prior') + ': <b>' + show(t.pri) + '</b>';
     var barCur = t.fmt === 'pct' || t.fmt === 'dec' ? (t.cur || 0) * 1000 : (t.cur || 0);
     var barPri = t.fmt === 'pct' || t.fmt === 'dec' ? (t.pri || 0) * 1000 : (t.pri || 0);
     var ico = t.icon ? '<span class="ick-ico">' + ICONS[t.icon] + '</span>' : '';
-    var mid = t.series ? spark(t.series) : bars(barCur, barPri);
+    var hasS = !!t.series;
+    var mid = hasS ? spark(t.series) : bars(barCur, barPri);
     return '<div class="ick-tile' + (t.hero ? ' ick-hero' : '') + '"' +
       (t.titleAttr ? ' title="' + t.titleAttr + '"' : '') + '>' +
       '<div class="ick-label"><span>' + t.label + '</span>' + ico + '</div>' +
       '<div class="ick-value">' + show(t.cur) + '</div>' +
-      '<div class="ick-prev">' + prevTxt + '</div>' +
+      (hasS ? '' : '<div class="ick-prev">' + prevTxt + '</div>') +
       mid +
-      '<div class="ick-foot"><span class="ick-sub">' + (t.sub || '') + '</span>' +
+      '<div class="ick-foot"><span class="ick-sub' + (hasS ? ' ick-sub-prev' : '') + '">' + (hasS ? prevTxt : (t.sub || '')) + '</span>' +
       chipFor(t.cur || 0, t.pri, t.chipKind) + '</div></div>';
   }
 
@@ -222,29 +222,29 @@
     var apdC = c.desM ? c.faW / c.desM : null, apdP = p.desM ? p.faW / p.desM : null;
     var l2aC = ratio(c.faW, c.leadsW), l2aP = ratio(p.faW, p.leadsW);
 
-    var year = section('This year', 'Jan 1 – ' + asofNice + ' · vs same period last year', [
-      { hero: 1, label: 'Sold revenue', fmt: 'money', cur: c.revY, pri: p.revY, titleAttr: moneyFull(c.revY || 0), icon: 'dollar', series: sr.rev12 },
-      { label: 'Jobs sold', fmt: 'count', cur: c.jobsY, pri: p.jobsY, icon: 'tag', series: sr.jobs12 },
-      { label: 'Appointments (first)', fmt: 'count', cur: c.faY, pri: p.faY,
-        sub: c.faY > (p.faY || 0) * 5 && (p.faY || 0) < 30 ? 'first-appt flag adopted mid-2025' : '', icon: 'cal', series: sr.fa12 },
-      { label: 'New leads', fmt: 'count', cur: c.leadsY, pri: p.leadsY, icon: 'userplus', series: sr.leads12 }
+    var year = section('This year', 'Jan 1 – ' + asofNice + ' · vs same period last year · lines show the last 12 months', [
+      { hero: 1, label: 'Sold revenue', fmt: 'money', cur: c.revY, pri: p.revY, priLabel: 'Same period last year', titleAttr: moneyFull(c.revY || 0), icon: 'dollar', series: sr.rev12, trendLabel: '12-month trend' },
+      { label: 'Jobs sold', fmt: 'count', cur: c.jobsY, pri: p.jobsY, priLabel: 'Last year', icon: 'tag', series: sr.jobs12, trendLabel: '12-month trend' },
+      { label: 'First appointments', fmt: 'count', cur: c.faY, pri: p.faY, icon: 'cal', series: sr.fa12, trendLabel: '12-month trend',
+        chipKind: (p.faY || 0) * 5 < (c.faY || 0) ? 'nocmp' : undefined, noCmpText: 'Tracked since 2025' },
+      { label: 'New leads', fmt: 'count', cur: c.leadsY, pri: p.leadsY, priLabel: 'Last year', icon: 'userplus', series: sr.leads12, trendLabel: '12-month trend' }
     ]);
-    var month = section('This month', 'Day ' + d.dom + ' of ' + d.dim + ' · vs prior month, day-matched', [
-      { label: 'Revenue', fmt: 'money', cur: c.revM, pri: p.revM, titleAttr: moneyFull(c.revM || 0), icon: 'dollar', series: sr.revw12 },
-      { label: 'Jobs sold', fmt: 'count', cur: c.jobsM, pri: p.jobsM, icon: 'tag', series: sr.jobsw12 },
-      { label: 'Sales designers', fmt: 'count', cur: c.desM, pri: p.desM, sub: 'active this month', icon: 'users' },
-      { label: 'Company closing %', fmt: 'pct', cur: closeC, pri: closeP, chipKind: 'pp', icon: 'pct',
-        sub: num(c.soldM || 0) + ' sold ÷ ' + num(c.cedM || 0) + ' created' },
-      { label: 'Average sale', fmt: 'money', cur: avgC, pri: avgP, icon: 'receipt',
+    var month = section('This month', 'Day ' + d.dom + ' of ' + d.dim + ' · vs prior month, day-matched · lines show the last 12 weeks', [
+      { label: 'Revenue', fmt: 'money', cur: c.revM, pri: p.revM, priLabel: 'Prior month', titleAttr: moneyFull(c.revM || 0), icon: 'dollar', series: sr.revw12, trendLabel: '12-week trend' },
+      { label: 'Jobs sold', fmt: 'count', cur: c.jobsM, pri: p.jobsM, priLabel: 'Prior month', icon: 'tag', series: sr.jobsw12, trendLabel: '12-week trend' },
+      { label: 'Active designers', fmt: 'count', cur: c.desM, pri: p.desM, priLabel: 'Prior month', sub: 'with a new opportunity', icon: 'users' },
+      { label: 'Closing % (Community)', fmt: 'pct', cur: closeC, pri: closeP, priLabel: 'Prior month', chipKind: 'pp', icon: 'pct',
+        sub: num(c.soldM || 0) + ' sold ÷ ' + num(c.cedM || 0) + ' created this month' },
+      { label: 'Average sale', fmt: 'money', cur: avgC, pri: avgP, priLabel: 'Prior month', icon: 'receipt',
         titleAttr: avgC == null ? '' : moneyFull(avgC) }
     ]);
-    var week = section('This week', 'Sunday start · day ' + d.wde + ' of 7 · vs prior week, day-matched', [
-      { label: 'Revenue', fmt: 'money', cur: c.revW, pri: p.revW, titleAttr: moneyFull(c.revW || 0), icon: 'dollar', series: sr.revw12 },
-      { label: 'Jobs sold', fmt: 'count', cur: c.jobsW, pri: p.jobsW, icon: 'tag', series: sr.jobsw12 },
-      { label: 'Appointments (first)', fmt: 'count', cur: c.faW, pri: p.faW, icon: 'cal', series: sr.faw12 },
-      { label: 'Appts per designer', fmt: 'dec', cur: apdC, pri: apdP, icon: 'users',
+    var week = section('This week', 'Sunday start · day ' + d.wde + ' of 7 · vs prior week, day-matched · lines show the last 12 weeks', [
+      { label: 'Revenue', fmt: 'money', cur: c.revW, pri: p.revW, priLabel: 'Prior week', titleAttr: moneyFull(c.revW || 0), icon: 'dollar', series: sr.revw12, trendLabel: '12-week trend' },
+      { label: 'Jobs sold', fmt: 'count', cur: c.jobsW, pri: p.jobsW, priLabel: 'Prior week', icon: 'tag', series: sr.jobsw12, trendLabel: '12-week trend' },
+      { label: 'First appointments', fmt: 'count', cur: c.faW, pri: p.faW, priLabel: 'Prior week', icon: 'cal', series: sr.faw12, trendLabel: '12-week trend' },
+      { label: 'Appts per designer', fmt: 'dec', cur: apdC, pri: apdP, priLabel: 'Prior week', icon: 'users',
         sub: num(c.faW || 0) + ' first appts ÷ ' + num(c.desM || 0) + ' designers' },
-      { label: 'Lead → appt conversion', fmt: 'pct', cur: l2aC, pri: l2aP, chipKind: 'pp', icon: 'pct',
+      { label: 'Lead to appointment', fmt: 'pct', cur: l2aC, pri: l2aP, priLabel: 'Prior week', chipKind: 'pp', icon: 'pct',
         sub: num(c.faW || 0) + ' of ' + num(c.leadsW || 0) + ' leads · partial week' }
     ]);
 
@@ -257,7 +257,7 @@
       '<div class="ick-notes"><b>Definitions.</b> Sold $ and jobs count by Original Project Sold Date, matching the Salesforce Community. ' +
       'Closing % = sold in period ÷ created in period, excluding Dead Lead (Community formula). ' +
       'Average sale = sold $ ÷ jobs sold. Appointments = first appointments; leads and appointments count by their own dates. ' +
-      'Green bar = this period, gray bar = prior period (day-matched: same elapsed days).</div>';
+      'Every comparison is day-matched (same number of elapsed days). Hover a money value for the exact amount.</div>';
   }
 
   /* ── idempotent plumbing ───────────────────────────────────────────────── */
@@ -281,6 +281,6 @@
     });
   }
 
-  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.1.0' };
+  window.ICCHKPI = { __installed: true, render: render, version: 'icch-kpi-v1.2.0' };
   render();
 })();
