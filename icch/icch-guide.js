@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Chicago - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.1/icch/icch-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.2/icch/icch-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__icchGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -118,7 +118,7 @@
       ['Why is a lead showing as Scheduled?', 'Scheduled is the Salesforce status for a lead with a booked appointment. It is shown exactly as in Salesforce.'],
       ['Can I see years before 2026?', 'Yes. Open <b>Filters</b> and tick earlier years in the <b>Year</b> list.'],
       ['Why do Sold Projects on Appointments not match Pipeline?', 'Appointments counts appointments linked to a sold project, while Pipeline counts each sold project once.'],
-      ['Can I export a table?', 'Hover over a table, click the three dots at its top right and choose <b>Export data</b>.'],
+      ['Can I export a table?', 'Not from the report on the website: the public version does not allow exporting. If you have a Power BI login, open the report in Power BI, hover over a table, click the three dots at its top right and choose <b>Export data</b>.'],
       ['Why can I not filter the KPI Overview?', 'It always shows fixed periods, so this year can be compared with last year on the same days.']
     ]
   };
@@ -213,6 +213,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.1' };
+  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.2' };
   render();
 })();
