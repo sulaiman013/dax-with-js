@@ -2,7 +2,7 @@
  * Inspired Closets Chicago - "Lead Journey" panel for the Opportunity Journey page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
- * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-journey-v1.0.0/icch/icch-journey.js
+ * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-journey-v1.0.1/icch/icch-journey.js
  * License : MIT
  *
  * Three views of the same leads (the DAX measure follows the report's Filters window):
@@ -65,7 +65,7 @@
     'html,body{height:100%;margin:0}',
     '#icj-root{background:', TILE, ' 0 0/300px 450px repeat,radial-gradient(ellipse at 8% 0%,rgba(154,1,47,.10),rgba(154,1,47,0) 45%),linear-gradient(180deg,#EDE2DE 0%,', T.ground, ' 30%,#F6F2EF 100%);',
       'border-top:4px solid ', T.brand, ';color:', T.ink, ";font-family:'Segoe UI',system-ui,-apple-system,sans-serif;",
-      'padding:16px 22px 12px;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;overflow:hidden}',
+      'padding:10px 14px 8px;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;overflow:hidden}',
     '#icj-root *{box-sizing:border-box}',
     '.j-head{flex:none;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;border-bottom:3px solid ', T.brand, ';padding-bottom:9px}',
     '.j-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:', T.brand, ';margin-bottom:2px}',
@@ -79,20 +79,20 @@
     '.j-sub{font-size:12px;color:', T.faint, ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.j-sel{margin-left:auto;font-size:11.5px;color:', T.sec, ';white-space:nowrap}',
     '.j-sel b{color:', T.ink, '}',
-    '.j-river{flex:1.35;min-height:0}',
+    '.j-river{flex:1.25;min-height:0}',
     '.j-svg{flex:1;min-height:0;position:relative}',
     '.j-svg svg{position:absolute;inset:0;width:100%;height:100%;display:block}',
     '.j-row{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:12px}',
-    '.j-body{flex:1;min-height:0;padding:2px 14px 10px;display:flex;flex-direction:column;gap:10px}',
+    '.j-body{flex:1;min-height:0;padding:0 14px 8px;display:flex;flex-direction:column;gap:7px}',
     '.j-miles{flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}',
-    '.j-mile{border:1px solid ', T.line, ';border-radius:10px;padding:8px 11px;background:', T.head, '}',
+    '.j-mile{border:1px solid ', T.line, ';border-radius:10px;padding:6px 10px;background:', T.head, '}',
     '.j-mile small{display:block;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:', T.faint, '}',
-    '.j-mile b{display:block;font-size:22px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums}',
-    '.j-mile span{font-size:11.5px;color:', T.sec, '}',
-    '.j-ladder{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}',
+    '.j-mile b{display:block;font-size:20px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}',
+    '.j-mile span{font-size:11px;line-height:1.35;color:', T.sec, ';display:block}',
+    '.j-ladder{flex:1;min-height:0;display:flex;flex-direction:column;gap:2px}',
     '.j-lh{font-size:11.5px;color:', T.sec, ';line-height:1.4}',
     '.j-lh b{color:', T.ink, '}',
-    '.j-lrow{flex:1;min-height:14px;display:grid;grid-template-columns:120px minmax(0,1fr) 92px;align-items:center;gap:10px;font-size:12px}',
+    '.j-lrow{flex:1;min-height:11px;display:grid;grid-template-columns:120px minmax(0,1fr) 92px;align-items:center;gap:10px;font-size:12px}',
     '.j-lrow .lab{color:', T.sec, ';white-space:nowrap}',
     '.j-bar{position:relative;height:72%;max-height:18px;background:', T.track, ';border-radius:4px;overflow:hidden}',
     '.j-bar i{position:absolute;left:0;top:0;bottom:0;background:#C9C0B8}',
@@ -100,7 +100,7 @@
     '.j-lrow .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;color:', T.ink, '}',
     '.j-lrow .num small{color:', T.faint, '}',
     '.j-tbl{flex:1;min-height:0;display:flex;flex-direction:column}',
-    '.j-tr{flex:1;min-height:16px;display:grid;grid-template-columns:minmax(0,1.5fr) 54px minmax(0,1.6fr) 52px 74px 78px;align-items:center;gap:8px;',
+    '.j-tr{flex:1;min-height:12px;display:grid;grid-template-columns:minmax(0,1.5fr) 54px minmax(0,1.6fr) 52px 74px 78px;align-items:center;gap:8px;',
       'font-size:12px;border-bottom:1px solid ', T.track, ';font-variant-numeric:tabular-nums}',
     '.j-tr.h{flex:none;min-height:0;padding-bottom:5px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:', T.faint, '}',
     '.j-tr .c{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -109,7 +109,7 @@
     '.j-fun{position:relative;height:10px;background:', T.track, ';border-radius:5px;overflow:hidden}',
     '.j-fun i{position:absolute;left:0;top:0;bottom:0;background:#2F4858;opacity:.55}',
     '.j-fun em{position:absolute;left:0;top:0;bottom:0;background:#1B7A4E}',
-    '.j-legend{flex:none;display:flex;gap:14px;font-size:11px;color:', T.sec, ';padding-top:5px}',
+    '.j-legend{flex:none;display:flex;gap:14px;font-size:11px;color:', T.sec, ';padding-top:4px}',
     '.j-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}',
     '.j-note{flex:none;font-size:10.5px;color:', T.sec, ';line-height:1.5}',
     '.j-note b{color:', T.ink, '}',
@@ -272,7 +272,7 @@
     ];
     var miles = m.map(function (x) {
       return '<div class="j-mile"><small>' + x[0] + '</small><b>' + (x[3] ? days(x[1]) : '-') + '</b><span>' +
-        (x[3] ? '1 in 4 take more than ' + days(x[2]) + ' · ' + n0(x[3]) + ' leads' : 'No leads reached this yet') + '</span></div>';
+        (x[3] ? '1 in 4 take more than ' + days(x[2]) : 'No leads reached this yet') + '</span></div>';
     }).join('');
     var a = (d.a || []).slice().sort(function (p, q) { return p[0] - q[0]; });
     var maxN = a.reduce(function (mx, x) { return Math.max(mx, +x[1]); }, 0) || 1;
@@ -290,7 +290,7 @@
   function scoreHtml(D) {
     var srcs = D.srcs.filter(function (s) { return s.n >= 10; });
     if (!srcs.length) srcs = D.srcs.slice();
-    srcs = srcs.slice(0, 12).sort(function (a, b) { return (b.amt / b.n) - (a.amt / a.n); });
+    srcs = srcs.slice(0, 11).sort(function (a, b) { return (b.amt / b.n) - (a.amt / a.n); });
     var head = '<div class="j-tr h"><span>Source</span><span class="r">Leads</span><span>Studio, then sold</span><span class="r">Win</span><span class="r">Sold</span><span class="r">Per lead</span></div>';
     var body = srcs.map(function (s) {
       return '<div class="j-tr"><span class="c" title="' + esc(s.name) + '">' + esc(s.name) + '</span><span class="r">' + n0(s.n) + '</span>' +
@@ -306,9 +306,7 @@
     if (state.sel && !D.rows.some(function (r) { return r.src === state.sel; })) state.sel = null;
     var asof = d.asof ? new Date(d.asof + 'T12:00:00') : new Date();
     var asofNice = asof.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    var head = '<div class="j-head"><div><div class="j-eyebrow">Inspired Closets · Chicago</div>' +
-      '<div class="j-title">Lead Journey <span>· from first contact to sale</span></div></div>' +
-      '<div class="j-asof"><b>' + n0(D.total) + '</b> leads created in the dates you picked<br>Duplicates and junk left out · data as of <b>' + asofNice + '</b></div></div>';
+    var head = '';
     if (!D.total) return head + '<div class="j-empty">No leads match the filters. Open Filters and widen the dates.</div>';
     var selTxt = 'Click a source to follow its leads';
     if (state.sel) {
@@ -319,7 +317,7 @@
     }
     var note = d.nopre ? '<div class="j-note"><b>' + n0(d.nopre) + '</b> of these leads were created before 2025, before status history was kept: they show as Not booked unless they reached the studio.</div>' : '';
     return head +
-      '<div class="j-card j-river"><div class="j-chd"><span class="j-tag">Journey River</span><span class="j-sub">Every lead from its source to where it is now. Band width = leads. Hover a band for the count.</span><span class="j-sel">' + selTxt + '</span></div>' +
+      '<div class="j-card j-river"><div class="j-chd"><span class="j-tag">Journey River</span><span class="j-sub"><b style="color:' + T.ink + '">' + n0(D.total) + '</b> leads created in the dates you picked (duplicates and junk left out), from their source to where they are now. Band width = leads; hover a band for the count.</span><span class="j-sel">' + selTxt + '</span></div>' +
       '<div class="j-caps" style="flex:none;position:relative;height:16px;margin:0 14px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:' + T.faint + '"></div>' +
       '<div class="j-svg" style="margin:2px 14px 10px"></div></div>' +
       '<div class="j-row"><div class="j-card"><div class="j-chd"><span class="j-tag">Speed to studio</span><span class="j-sub">Typical time from the lead coming in</span></div><div class="j-body">' + speedHtml(d) + '</div></div>' +
@@ -351,6 +349,6 @@
   }
 
   window.addEventListener('resize', render);
-  window.ICCHJOURNEY = { __installed: true, render: render, version: 'icch-journey-v1.0.0' };
+  window.ICCHJOURNEY = { __installed: true, render: render, version: 'icch-journey-v1.0.1' };
   render();
 })();
