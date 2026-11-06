@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Chicago - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.2/icch/icch-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.3/icch/icch-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__icchGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -24,7 +24,7 @@
           ['Pipeline', 'Sold projects week by week, closing % by designer, and the project list. Use it to follow sales and each designer’s results.'],
           ['Opportunities', 'New leads, their status, where they came from and how they trend month by month. The <b>Details</b> tab adds a week by week table, a map and every lead.'],
           ['Appointments', 'Design and installation appointments, their project stage and their source. The <b>Details</b> tab adds appointments by week, a map and every appointment.'],
-          ['Opportunity Journey', 'How each lead moved through its statuses, from first contact to the studio and to a sale.'],
+          ['Opportunity Journey', 'Where leads go after they come in: the Journey River from each source to the studio and the sale, how fast leads move, and which sources turn leads into sales. The table lists every lead with its path.'],
           ['Guide', 'This page.']
         ] }
       ] },
@@ -44,6 +44,7 @@
         { list: [
           'The big numbers at the top are the headline for everything selected. The small line under some of them adds context, such as how much was lost or how many jobs were sold.',
           'Click a bar, a slice or a point on a line to filter the rest of the page to it. Click it again to clear it.',
+          'In the Journey River on Opportunity Journey, click a source to follow only its leads, and click it again to show all. Hover a band to see how many leads took that path. The river follows the Filters window but does not filter the table.',
           'Hover over any bar, slice or point to see the exact amount.',
           'On the Opportunities and Appointments <b>Overview</b> tabs, right-click a lead source, lead status or project stage and choose <b>Drill through</b> to open the <b>Details</b> tab for just that item.',
           'Click a column heading to sort a table. Long text, such as project notes, wraps onto extra lines.',
@@ -77,7 +78,12 @@
         { defs: [
           ['Opportunities', 'Leads in the dates you chose.'],
           ['O to Appointments, O to Appt %', 'Leads whose project reached an appointment (Design, Proposed, Incomplete or Sold), as a number and as a share of all leads.'],
-          ['O to Sold, O to Sold %', 'Leads whose project was sold, as a number and as a share of all leads.']
+          ['O to Sold, O to Sold %', 'Leads whose project was sold, as a number and as a share of all leads.'],
+          ['Journey River', 'Every lead created in the dates you chose, from its source to its first contact (booked first try, booked after follow-up, or not booked), the studio, and where it is now. Duplicate and Junk leads are left out.'],
+          ['Speed to studio', 'The typical number of days from the lead coming in to the first appointment being booked, to the studio and to the sale. Half of the leads are faster than this and half slower; the small line shows the time that 1 in 4 leads still take longer than.'],
+          ['When the first call goes unanswered', 'Leads by how many no-response attempts they went through, and how many of them went on to book an appointment.'],
+          ['Channel scorecard', 'For each lead source: leads, the share that reached the studio and that sold, the sold value, and the sold value per lead. Sorted by sold value per lead.'],
+          ['Journey (table)', 'Each lead as a small picture: the dark dot is the lead coming in, the orange rings are no-response attempts, the next dot is the booked appointment (green-blue first try, orange after follow-up, empty if not booked), then the studio, then where the lead is now.']
         ] },
         { h: 'Stages' },
         { p: 'Sold, Lost, Proposed and Dead Lead are the stages used on every sales page. Dead Lead means a project that went quiet without being formally lost.' }
@@ -213,6 +219,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.2' };
+  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.3' };
   render();
 })();
