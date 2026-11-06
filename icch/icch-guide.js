@@ -33,12 +33,12 @@
           'The bar at the bottom of every page takes you to any report. The page you are on is shown in red.',
           'Lead Source and Pipeline count sales by sold date. Click <b>Filter by Created Date</b> to see the same page by the date the project was created, and <b>Filter by Sold Date</b> to go back.',
           'Opportunities and Appointments each have two tabs at the top: <b>Overview</b> and <b>Details</b>.',
-          'Click <b>Filters</b> at the top right, or the summary line next to it, to open the filter window. Each page has its own lists, for example <b>Year</b>, <b>Month</b>, <b>Designer</b>, <b>Lead Source</b>, <b>Form Type</b> and a date range. Every pick applies straight away.',
+          'Click <b>Filters</b> at the top right, or the summary line next to it, to open the filter window. Each page has its own lists, for example <b>Designer</b>, <b>Lead Source</b> and <b>Form Type</b>. Every pick applies straight away.',
           '<b>Clear all filters</b> resets every list in the window. <b>Done</b>, the <b>X</b> or a click outside the window closes it, and your choices stay.',
-          'The summary line at the top always shows what is selected: the years, dates, designers and sources in use.',
-          'On <b>Opportunity Journey</b> the dates have their own button: click <b>Dates</b> at the top (it always shows the dates in use) to open the date window with the <b>Year</b> list and a two-month calendar. Pick a preset such as <b>Last month</b>, click a start day and then an end day, or type the dates. <b>Clear</b> goes back to all dates. Every pick applies straight away. <b>Filters</b> on that page holds the other lists.',
+          'The two lines at the top always show what is selected: the dates on the left, and the designers, sources and other lists next to <b>Filters</b>.',
+          'Every page with filters has a <b>Dates</b> button at the top. It always shows the dates in use; click it to open the date window with the <b>Year</b> and <b>Month</b> lists and a two-month calendar. Pick a preset such as <b>Last month</b>, click a start day and then an end day, or type the dates. <b>Clear</b> goes back to all dates. Every pick applies straight away.',
           'On Opportunities and Appointments, your choices carry over between the <b>Overview</b> and <b>Details</b> tabs.',
-          'Year starts on 2026 and later. Tick earlier years in the <b>Year</b> list to look further back.'
+          'Year starts on 2026 and later. Open <b>Dates</b> and tick earlier years in the <b>Year</b> list to look further back.'
         ] }
       ] },
       { id: 'reading', title: 'Reading a page', body: [
@@ -118,11 +118,11 @@
     ],
     faqTitle: 'Questions you will probably ask',
     faqs: [
-      ['Why is a page blank?', 'A filter is probably excluding everything. Open <b>Filters</b> and click <b>Clear all filters</b>, or pick a wider date range. On Opportunity Journey, also open <b>Dates</b>: a date range outside the chosen years shows nothing.'],
+      ['Why is a page blank?', 'A filter is probably excluding everything. Open <b>Filters</b> and click <b>Clear all filters</b>, and open <b>Dates</b> and click <b>Clear</b>. A date range outside the chosen years shows nothing.'],
       ['Why does sold revenue differ from my Salesforce report?', 'This report counts a sale on the Original Project Sold Date and only while the stage is a sold stage. A Salesforce report that uses a different date, or includes cancelled jobs, shows a different total.'],
       ['Why does the KPI Overview not match the Lead Source page?', 'The KPI Overview always compares fixed periods: this year, this month and this week. The other pages follow the dates you pick.'],
       ['Why is a lead showing as Scheduled?', 'Scheduled is the Salesforce status for a lead with a booked appointment. It is shown exactly as in Salesforce.'],
-      ['Can I see years before 2026?', 'Yes. Open <b>Filters</b> (on Opportunity Journey, <b>Dates</b>) and tick earlier years in the <b>Year</b> list.'],
+      ['Can I see years before 2026?', 'Yes. Open <b>Dates</b> and tick earlier years in the <b>Year</b> list.'],
       ['Why do Sold Projects on Appointments not match Pipeline?', 'Appointments counts appointments linked to a sold project, while Pipeline counts each sold project once.'],
       ['Can I export a table?', 'Not from the report on the website: the public version does not allow exporting. If you have a Power BI login, open the report in Power BI, hover over a table, click the three dots at its top right and choose <b>Export data</b>.'],
       ['Why can I not filter the KPI Overview?', 'It always shows fixed periods, so this year can be compared with last year on the same days.']

@@ -24,7 +24,7 @@
           ['Pipeline', 'Projects week by week, closing % by designer, and the project list. Use it to follow the pipeline and each designer’s results.'],
           ['Opportunities', 'New leads, their status, where they came from and how they trend month by month. The <b>Details</b> tab adds a week by week table, a map and every lead.'],
           ['Appointments', 'Design and installation appointments, their project stage and their source. The <b>Details</b> tab adds appointments by week, a map and every appointment.'],
-          ['Opportunity Journey', 'How each lead moved through its statuses, from first contact to the studio and to a sale.'],
+          ['Opportunity Journey', 'Where leads go after they come in: how many booked an appointment, reached the studio and sold, the Lead journey picture from source to sale, and every lead with its path.'],
           ['Guide', 'This page.']
         ] }
       ] },
@@ -33,17 +33,19 @@
           'The bar at the bottom of every page takes you to any report. The page you are on is shown in red.',
           'Lead Source and Pipeline count projects by the date they were created. Click <b>Filter by Sold Date</b> to see the same page by the date the project was sold, and <b>Filter by Created Date</b> to go back.',
           'Opportunities and Appointments each have two tabs at the top: <b>Overview</b> and <b>Details</b>.',
-          'Click <b>Filters</b> at the top right, or the summary line next to it, to open the filter window. Each page has its own lists, for example <b>Year</b>, <b>Month</b>, <b>Designer</b>, <b>Lead Source</b>, <b>Form Type</b> and a date range. Every pick applies straight away.',
+          'Click <b>Filters</b> at the top right, or the summary line next to it, to open the filter window. Each page has its own lists, for example <b>Designer</b>, <b>Lead Source</b> and <b>Form Type</b>. Every pick applies straight away.',
           '<b>Clear all filters</b> resets every list in the window. <b>Done</b>, the <b>X</b> or a click outside the window closes it, and your choices stay.',
-          'The summary line at the top always shows what is selected: the years, dates, designers and sources in use.',
+          'The two lines at the top always show what is selected: the dates on the left, and the designers, sources and other lists next to <b>Filters</b>.',
+          'Every page with filters has a <b>Dates</b> button at the top. It always shows the dates in use; click it to open the date window with the <b>Year</b> and <b>Month</b> lists and a two-month calendar. Pick a preset such as <b>Last month</b>, click a start day and then an end day, or type the dates. <b>Clear</b> goes back to all dates. Every pick applies straight away.',
           'On Opportunities and Appointments, your choices carry over between the <b>Overview</b> and <b>Details</b> tabs.',
-          'Year starts on 2026 and later. Tick earlier years in the <b>Year</b> list to look further back.'
+          'Year starts on 2026 and later. Open <b>Dates</b> and tick earlier years in the <b>Year</b> list to look further back.'
         ] }
       ] },
       { id: 'reading', title: 'Reading a page', body: [
         { list: [
           'The big numbers at the top are the headline for everything selected. The small line under some of them adds context, such as how much was lost or how many jobs were sold.',
           'Click a bar, a slice or a point on a line to filter the rest of the page to it. Click it again to clear it.',
+          'On Opportunity Journey, click a source, a step or a band in the Lead journey picture and the whole page follows; click it again, or click a blank part of the picture, to clear it. Click a row in the table to see that lead’s path lit up in the picture.',
           'Hover over any bar, slice or point to see the exact amount.',
           'On the Opportunities and Appointments <b>Overview</b> tabs, right-click a lead source, lead status or project stage and choose <b>Drill through</b> to open the <b>Details</b> tab for just that item.',
           'Click a column heading to sort a table. Long text, such as project notes, wraps onto extra lines.',
@@ -75,9 +77,13 @@
         ] },
         { h: 'Opportunity Journey' },
         { defs: [
-          ['Opportunities', 'Leads in the dates you chose.'],
-          ['O to Appointments, O to Appt %', 'Leads whose project reached an appointment (Design, Proposed, Incomplete or Sold), as a number and as a share of all leads.'],
-          ['O to Sold, O to Sold %', 'Leads whose project was sold, as a number and as a share of all leads.']
+          ['Leads', 'Leads created in the dates you chose. Duplicate and Junk leads are left out.'],
+          ['Booked an appointment, Reached the studio, Sold', 'How many of those leads got that far, the share of all leads, and the typical number of days from the lead coming in. Half of the leads are faster than that and half slower.'],
+          ['Sold value', 'The sold value of those leads’ projects, and the sold value per lead.'],
+          ['Lead journey', 'Every lead flows left to right: its source, its first contact, the studio and where it is now. Each band is a group of leads and wider means more leads. Hover a band or a step for the numbers.'],
+          ['First contact', 'Booked first try: booked without an unanswered call. Booked after follow-up: booked after one or more unanswered attempts or a follow-up. Not booked: no appointment yet.'],
+          ['Where they are now', 'The stage of the lead’s project if it has one (Sold, Proposed, Lost, Dead Lead); otherwise Nurturing, Still working or Closed.'],
+          ['Journey (table)', 'Each lead as a small picture: the dark dot is the lead coming in, the orange rings are no-response attempts, the next dot is the booked appointment (green-blue first try, orange after follow-up, empty if not booked), then the studio, then where the lead is now.']
         ] },
         { h: 'Stages' },
         { p: 'Sold, Lost, Proposed and Dead Lead are the stages used on every sales page. Dead Lead means a project that went quiet without being formally lost.' }
@@ -113,12 +119,12 @@
     ],
     faqTitle: 'Questions you will probably ask',
     faqs: [
-      ['Why is a page blank?', 'A filter is probably excluding everything. Open <b>Filters</b> and click <b>Clear all filters</b>, or pick a wider date range.'],
+      ['Why is a page blank?', 'A filter is probably excluding everything. Open <b>Filters</b> and click <b>Clear all filters</b>, and open <b>Dates</b> and click <b>Clear</b>. A date range outside the chosen years shows nothing.'],
       ['Why does sold revenue differ from my Salesforce report?', 'This report counts a project as sold only while its stage is a sold stage. A Salesforce report that uses a different date, or includes cancelled jobs, shows a different total.'],
       ['Why does the KPI Overview not match the Lead Source page?', 'The KPI Overview always compares fixed periods (this year, this month and this week) and counts sales by the date they were sold. Lead Source follows the dates you pick and counts by the date the project was created.'],
       ['How do I see sales by the date they were sold?', 'On Lead Source or Pipeline, click <b>Filter by Sold Date</b> at the top. Click <b>Filter by Created Date</b> to go back.'],
       ['Why is a lead showing as Scheduled?', 'Scheduled is the Salesforce status for a lead with a booked appointment. It is shown exactly as in Salesforce.'],
-      ['Can I see years before 2026?', 'Yes. Open <b>Filters</b> and tick earlier years in the <b>Year</b> list.'],
+      ['Can I see years before 2026?', 'Yes. Open <b>Dates</b> and tick earlier years in the <b>Year</b> list.'],
       ['Why do Sold Projects on Appointments not match Pipeline?', 'Appointments counts appointments linked to a sold project, while Pipeline counts each sold project once.'],
       ['Can I export a table?', 'Not from the report on the website: the public version does not allow exporting. If you have a Power BI login, open the report in Power BI, hover over a table, click the three dots at its top right and choose <b>Export data</b>.'],
       ['Why can I not filter the KPI Overview?', 'It always shows fixed periods, so this year can be compared with last year on the same days.']
