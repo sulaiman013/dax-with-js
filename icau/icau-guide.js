@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Austin - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icau-guide-v1.0.0/icau/icau-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icau-guide-v1.0.1/icau/icau-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__icauGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -14,14 +14,14 @@
   var G = {
     title: 'Report Guide',
     eyebrow: 'Inspired Closets · Austin',
-    intro: 'This report shows how Inspired Closets Austin is selling: where customers come from, how leads turn into appointments and sales, and how each designer is doing. It opens on the <b>Home</b> page. Every sales page opens on 2026 and later, with sales counted by the date the project was sold.',
+    intro: 'This report shows how Inspired Closets Austin is selling: where customers come from, how leads turn into appointments and sales, and how each designer is doing. It opens on the <b>Home</b> page. Every sales page opens on 2026 and later, with Lead Source and Pipeline counted by the date the project was created.',
     sections: [
       { id: 'pages', title: 'The pages', body: [
         { defs: [
           ['Home', 'The starting point. Click a tile to open a report.'],
           ['KPI Overview', 'How this year, this month and this week compare with the same days of the last period, plus the same tiles as your Salesforce Community dashboard. Use it for a quick health check.'],
-          ['Lead Source', 'Sold revenue by where the customer came from, by stage and by week, with every project listed underneath. Use it to see which sources bring in sales.'],
-          ['Pipeline', 'Sold projects week by week, closing % by designer, and the project list. Use it to follow sales and each designer’s results.'],
+          ['Lead Source', 'Revenue by where the customer came from, by stage and by week, with every project listed underneath. Use it to see which sources bring in business.'],
+          ['Pipeline', 'Projects week by week, closing % by designer, and the project list. Use it to follow the pipeline and each designer’s results.'],
           ['Opportunities', 'New leads, their status, where they came from and how they trend month by month. The <b>Details</b> tab adds a week by week table, a map and every lead.'],
           ['Appointments', 'Design and installation appointments, their project stage and their source. The <b>Details</b> tab adds appointments by week, a map and every appointment.'],
           ['Opportunity Journey', 'How each lead moved through its statuses, from first contact to the studio and to a sale.'],
@@ -31,7 +31,7 @@
       { id: 'moving', title: 'Moving around and choosing what you see', body: [
         { list: [
           'The bar at the bottom of every page takes you to any report. The page you are on is shown in red.',
-          'Lead Source and Pipeline count sales by sold date. Click <b>Filter by Created Date</b> to see the same page by the date the project was created, and <b>Filter by Sold Date</b> to go back.',
+          'Lead Source and Pipeline count projects by the date they were created. Click <b>Filter by Sold Date</b> to see the same page by the date the project was sold, and <b>Filter by Created Date</b> to go back.',
           'Opportunities and Appointments each have two tabs at the top: <b>Overview</b> and <b>Details</b>.',
           'Click <b>Filters</b> at the top right, or the summary line next to it, to open the filter window. Each page has its own lists, for example <b>Year</b>, <b>Month</b>, <b>Designer</b>, <b>Lead Source</b>, <b>Form Type</b> and a date range. Every pick applies straight away.',
           '<b>Clear all filters</b> resets every list in the window. <b>Done</b>, the <b>X</b> or a click outside the window closes it, and your choices stay.',
@@ -69,7 +69,7 @@
         ] },
         { h: 'Appointments' },
         { defs: [
-          ['Total Activities', 'Appointments and calendar entries in the dates you chose. Designer unavailable blocks are left out.'],
+          ['Total Activities', 'Appointments and calendar entries in the dates you chose.'],
           ['Sold Projects, Proposed, Lost Projects', 'Appointments whose project is now sold, proposed or lost. These count appointments, so a project with several appointments counts more than once.'],
           ['Success Rate', 'Sold Projects divided by Total Activities.']
         ] },
@@ -98,7 +98,7 @@
           'Sales pages show 2026 and later by default. Older years are in the <b>Year</b> list.',
           'Projects that were sold and then cancelled are not counted as sold. This matches Salesforce.',
           'Test and practice records are left out.',
-          'Designer unavailable blocks, such as “Unavailable 7am-10am”, are left out of the Appointments pages. Other internal calendar entries, such as design meetings and warehouse meetings, are still counted.',
+          'Every calendar entry is counted on the Appointments pages, including designer “Unavailable” blocks and internal meetings such as design meetings.',
           'The Appointments pages can show future dates, because booked appointments are included.'
         ] }
       ] },
@@ -113,8 +113,9 @@
     faqTitle: 'Questions you will probably ask',
     faqs: [
       ['Why is a page blank?', 'A filter is probably excluding everything. Open <b>Filters</b> and click <b>Clear all filters</b>, or pick a wider date range.'],
-      ['Why does sold revenue differ from my Salesforce report?', 'This report counts a sale on the Original Project Sold Date and only while the stage is a sold stage. A Salesforce report that uses a different date, or includes cancelled jobs, shows a different total.'],
-      ['Why does the KPI Overview not match the Lead Source page?', 'The KPI Overview always compares fixed periods: this year, this month and this week. The other pages follow the dates you pick.'],
+      ['Why does sold revenue differ from my Salesforce report?', 'This report counts a project as sold only while its stage is a sold stage. A Salesforce report that uses a different date, or includes cancelled jobs, shows a different total.'],
+      ['Why does the KPI Overview not match the Lead Source page?', 'The KPI Overview always compares fixed periods (this year, this month and this week) and counts sales by the date they were sold. Lead Source follows the dates you pick and counts by the date the project was created.'],
+      ['How do I see sales by the date they were sold?', 'On Lead Source or Pipeline, click <b>Filter by Sold Date</b> at the top. Click <b>Filter by Created Date</b> to go back.'],
       ['Why is a lead showing as Scheduled?', 'Scheduled is the Salesforce status for a lead with a booked appointment. It is shown exactly as in Salesforce.'],
       ['Can I see years before 2026?', 'Yes. Open <b>Filters</b> and tick earlier years in the <b>Year</b> list.'],
       ['Why do Sold Projects on Appointments not match Pipeline?', 'Appointments counts appointments linked to a sold project, while Pipeline counts each sold project once.'],
@@ -171,7 +172,7 @@
   function build(d) {
     var chips = '<div class="ig-chips">' +
       '<span class="ig-chip">Data updated <b>' + (d && d.updated ? d.updated : 'about every 30 minutes') + '</b></span>' +
-      '<span class="ig-chip">Sales counted by <b>sold date</b></span>' +
+      '<span class="ig-chip">Sales counted by <b>created date</b></span>' +
       '<span class="ig-chip">Opens on <b>2026 and later</b></span>' +
       '<span class="ig-chip">Source <b>Austin Salesforce</b></span></div>';
     var nav = '<nav class="ig-nav">' + G.sections.map(function (s) { return '<a href="#ig-' + s.id + '" data-t="' + s.id + '">' + s.title + '</a>'; }).join('') +
@@ -213,6 +214,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICAUGUIDE = { __installed: true, render: render, version: 'icau-guide-v1.0.0' };
+  window.ICAUGUIDE = { __installed: true, render: render, version: 'icau-guide-v1.0.1' };
   render();
 })();
