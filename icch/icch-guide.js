@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Chicago - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.3/icch/icch-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icch-guide-v1.0.4/icch/icch-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__icchGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -24,7 +24,7 @@
           ['Pipeline', 'Sold projects week by week, closing % by designer, and the project list. Use it to follow sales and each designer’s results.'],
           ['Opportunities', 'New leads, their status, where they came from and how they trend month by month. The <b>Details</b> tab adds a week by week table, a map and every lead.'],
           ['Appointments', 'Design and installation appointments, their project stage and their source. The <b>Details</b> tab adds appointments by week, a map and every appointment.'],
-          ['Opportunity Journey', 'Where leads go after they come in: the Journey River from each source to the studio and the sale, how fast leads move, and which sources turn leads into sales. The table lists every lead with its path.'],
+          ['Opportunity Journey', 'Where leads go after they come in: how many booked an appointment, reached the studio and sold, which sources sell best, and every lead with its path. Click any source, bar or row to filter the whole page.'],
           ['Guide', 'This page.']
         ] }
       ] },
@@ -44,7 +44,7 @@
         { list: [
           'The big numbers at the top are the headline for everything selected. The small line under some of them adds context, such as how much was lost or how many jobs were sold.',
           'Click a bar, a slice or a point on a line to filter the rest of the page to it. Click it again to clear it.',
-          'In the Journey River on Opportunity Journey, click a source to follow only its leads, and click it again to show all. Hover a band to see how many leads took that path. The river follows the Filters window but does not filter the table.',
+          'On Opportunity Journey, click a source in Lead sources, a bar in First contact or Where leads are now, or a row in the table, and every number on the page follows. Click it again to clear it.',
           'Hover over any bar, slice or point to see the exact amount.',
           'On the Opportunities and Appointments <b>Overview</b> tabs, right-click a lead source, lead status or project stage and choose <b>Drill through</b> to open the <b>Details</b> tab for just that item.',
           'Click a column heading to sort a table. Long text, such as project notes, wraps onto extra lines.',
@@ -76,13 +76,12 @@
         ] },
         { h: 'Opportunity Journey' },
         { defs: [
-          ['Opportunities', 'Leads in the dates you chose.'],
-          ['O to Appointments, O to Appt %', 'Leads whose project reached an appointment (Design, Proposed, Incomplete or Sold), as a number and as a share of all leads.'],
-          ['O to Sold, O to Sold %', 'Leads whose project was sold, as a number and as a share of all leads.'],
-          ['Journey River', 'Every lead created in the dates you chose, from its source to its first contact (booked first try, booked after follow-up, or not booked), the studio, and where it is now. Duplicate and Junk leads are left out.'],
-          ['Speed to studio', 'The typical number of days from the lead coming in to the first appointment being booked, to the studio and to the sale. Half of the leads are faster than this and half slower; the small line shows the time that 1 in 4 leads still take longer than.'],
-          ['When the first call goes unanswered', 'Leads by how many no-response attempts they went through, and how many of them went on to book an appointment.'],
-          ['Channel scorecard', 'For each lead source: leads, the share that reached the studio and that sold, the sold value, and the sold value per lead. Sorted by sold value per lead.'],
+          ['Leads', 'Leads created in the dates you chose. Duplicate and Junk leads are left out.'],
+          ['Booked an appointment, Reached the studio, Sold', 'How many of those leads got that far, the share of all leads, and the typical number of days from the lead coming in. Half of the leads are faster than that and half slower.'],
+          ['Sold value', 'The sold value of those leads’ projects, and the sold value per lead.'],
+          ['Lead sources', 'For each source: leads, the share that reached the studio, the share that sold, the sold value and the sold value per lead.'],
+          ['First contact', 'Booked first try: booked without an unanswered call. Booked after follow-up: booked after one or more unanswered attempts or a follow-up. Not booked: no appointment yet.'],
+          ['Where leads are now', 'The stage of the lead’s project if it has one (Sold, Proposed, Lost, Dead Lead); otherwise Nurturing, Still working or Closed.'],
           ['Journey (table)', 'Each lead as a small picture: the dark dot is the lead coming in, the orange rings are no-response attempts, the next dot is the booked appointment (green-blue first try, orange after follow-up, empty if not booked), then the studio, then where the lead is now.']
         ] },
         { h: 'Stages' },
@@ -219,6 +218,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.3' };
+  window.ICCHGUIDE = { __installed: true, render: render, version: 'icch-guide-v1.0.4' };
   render();
 })();
