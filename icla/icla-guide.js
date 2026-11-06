@@ -1,6 +1,6 @@
 /*!
  * Inspired Closets Los Angeles - "Report Guide" page, rendered in JavaScript
- * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-guide-v1.0.2/icla/icla-guide.js
+ * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@icla-guide-v1.0.3/icla/icla-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__iclaGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
  */
@@ -24,7 +24,7 @@
           ['Lead Source', 'Revenue by where the customer came from, by stage and by week, with every project listed underneath. Use it to see which sources bring in business.'],
           ['Pipeline', 'Projects week by week, closing % by designer, and the project list. Use it to follow the pipeline and each designer\u2019s results.'],
           ['Opportunities', 'New leads, their status, where they came from and how they trend month by month. The <b>Details</b> tab adds a week by week table, a map and every lead.'],
-          ['Appointments', 'Design and installation appointments, their project stage and their source. The <b>Details</b> tab adds appointments by week, a map and every appointment.'],
+          ['Appointments', 'First design appointments, their project stage and their source. The <b>Details</b> tab adds appointments by week, a map and every appointment.'],
           ['Journey', 'How each lead moved through its statuses, from first contact to the studio and to a sale.'],
           ['Guide', 'This page.']
         ] }
@@ -73,7 +73,7 @@
         ] },
         { h: 'Appointments' },
         { defs: [
-          ['Total Activities', 'Appointments and calendar entries in the dates you chose. Designer availability blocks are left out.'],
+          ['Total Activities', 'First design appointments in the dates you chose.'],
           ['Sold Projects, Proposed, Lost Projects', 'Appointments whose project is now sold, proposed or lost. These count appointments, so a project with several appointments counts more than once.'],
           ['Success Rate', 'Sold Projects divided by Total Activities.']
         ] },
@@ -101,7 +101,7 @@
           'Sales pages show 2026 and later by default. Older years are in the <b>Year</b> list.',
           'Projects that were sold and then cancelled are not counted as sold. This matches Salesforce.',
           'Test and practice records are left out.',
-          'Designer availability blocks, such as \u201cUnavailable\u201d or \u201cnot available\u201d, are left out of the Appointments pages. Other calendar entries, such as internal meetings or \u201cno appointments\u201d notes, are still counted.',
+          'The Appointments pages count first design appointments only: calendar entries whose subject contains \u201c1st\u201d, from June 2025 on. Cancelled appointments, installations and office staff calendars are left out.',
           'The Appointments pages can show future dates, because booked appointments are included.'
         ] }
       ] },
@@ -218,6 +218,6 @@
       if (!root.__wired) { wire(root); root.__wired = true; }
     });
   }
-  window.ICLAGUIDE = { __installed: true, render: render, version: 'icla-guide-v1.0.2' };
+  window.ICLAGUIDE = { __installed: true, render: render, version: 'icla-guide-v1.0.3' };
   render();
 })();
