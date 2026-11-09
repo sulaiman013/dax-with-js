@@ -1,5 +1,5 @@
 /*!
- * Inspired Closets Demo - "Report Guide" page, rendered in JavaScript
+ * Salesforce Sales & Marketing Demo - "Report Guide" page, rendered in JavaScript
  * Serve : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@demo-guide-v1.0.0/demo/demo-guide.js
  * The guide explains the report; it never reports figures. The only live value is window.__demoGuide.updated
  * (the last data update, passed from the Power BI measure). License: MIT
@@ -13,8 +13,8 @@
 
   var G = {
     title: 'Report Guide',
-    eyebrow: 'Inspired Closets · Demo',
-    intro: 'This report shows how an Inspired Closets franchise is selling, using made-up demo data: where customers come from, how leads turn into appointments and sales, and how each designer is doing. It opens on the <b>Home</b> page. Every sales page opens on 2026 and later, with sales counted by the date the project was sold.',
+    eyebrow: 'Salesforce Sales & Marketing · Demo',
+    intro: 'This report shows how a home-design franchise is selling, using made-up demo data: where customers come from, how leads turn into appointments and sales, and how each designer is doing. It opens on the <b>Home</b> page. Every sales page opens on 2026 and later, with sales counted by the date the project was sold.',
     sections: [
       { id: 'pages', title: 'The pages', body: [
         { defs: [
@@ -97,7 +97,7 @@
           [T.prop, 'Proposed', 'Blue always means proposed.'],
           [T.dead, 'Dead Lead', 'Grey always means dead lead.'],
           [T.navy, 'Single numbers', 'Dark blue is used for charts that show one number, such as lead counts, so it never means sold or lost.'],
-          [T.brand, 'Buttons and headings', 'The Inspired Closets red is only used for buttons and headings, never for data.']
+          [T.brand, 'Buttons and headings', 'The brand red is only used for buttons and headings, never for data.']
         ] },
         { p: 'On the KPI Overview, a green <b>Ahead</b> pill means better than the same days of the last period, an orange <b>Behind</b> pill means worse, and a grey <b>Level</b> pill means within one percent.' }
       ] },

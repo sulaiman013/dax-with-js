@@ -1,5 +1,5 @@
 /*!
- * Inspired Closets Demo - "KPI Overview" report page, rendered in JavaScript
+ * Salesforce Sales & Marketing Demo - "KPI Overview" report page, rendered in JavaScript
  * ---------------------------------------------------------------------------
  * Repo    : https://github.com/sulaiman013/dax-with-js
  * Serve   : https://cdn.jsdelivr.net/gh/sulaiman013/dax-with-js@demo-kpi-v1.0.0/demo/demo-kpi.js
@@ -258,7 +258,7 @@
         note: 'Sold by sold date ÷ created, excluding Dead Lead.', foot: 'Last 120 days', foot2: 'My Closing %' }
     ]);
 
-    return '<div class="ick-head"><div><div class="ick-eyebrow">Inspired Closets · Demo</div>' +
+    return '<div class="ick-head"><div><div class="ick-eyebrow">Salesforce Sales &amp; Marketing · Demo</div>' +
       '<div class="ick-title">KPI Overview <span>· how the business is tracking</span></div></div>' +
       '<div class="ick-asof">Data as of <b>' + asofNice + '</b><br>Sales by sold date (Salesforce Community standard) · weeks start Sunday</div></div>' +
       year + month + week + community +
